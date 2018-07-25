@@ -1,0 +1,27 @@
+'DEFINES-------------------------------------------------------------
+
+#define HTTP_DEBUG_PRINT 0
+
+#define WLN_CLK PL_IO_NUM_53
+#define WLN_CS PL_IO_NUM_49
+#define WLN_DI PL_IO_NUM_52
+#define WLN_DO PL_IO_NUM_50
+#define WLN_RST PL_IO_NUM_51
+
+'INCLUDES------------------------------------------------------------
+
+include "sock\trunk\sock.tbh"
+include "dhcp\trunk\dhcp.tbh"
+include "dns\trunk\dns.tbh"
+include "wln\trunk\wln.tbh"
+include "http_helper.tbh"
+
+'DECLARATIONS--------------------------------------------------------
+
+const DHCP_FAIL_LIMIT=1 'max number of DHCP retry "batches"
+const ALT_NET_IP="192.168.1.40"
+const ALT_NET_GATEWAY_IP="192.168.1.1"
+const ALT_NET_NETMASK="255.255.255.0"
+const ALT_WLN_IP="192.168.1.41"
+const ALT_WLN_GATEWAY_IP="192.168.1.1"
+const ALT_WLN_NETMASK="255.255.255.0"

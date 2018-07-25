@@ -1,0 +1,343 @@
+include "global.tbh"
+
+dim startp as byte
+dim b,c as byte=0
+dim httpstring as string
+dim dns_socket, request_socket, upgrade_socket as byte
+dim dns_started as boolean=false
+
+enum header_states
+
+	RESPONSE,
+	KEY,
+	VALUE,
+	ASSIGN,
+	COMPLETE,
+	ERROR
+	
+end enum
+
+dim header_state as header_states=RESPONSE
+
+type header_values
+
+	key(20) as string
+	value(20) as string
+
+end type
+
+type header_types
+
+	access_control_allow_origin as string
+	access_control_allow_credentials as string
+	access_control_expose_headers as string
+	access_control_max_age as string
+	access_control_allow_methods as string 
+	access_control_allow_headers as string  	 
+	allow as string
+	content_encoding as string   	 
+	content_language as string
+	content_length as string
+	content_location as string
+	content_range as string
+	content_type as string
+	expires as string
+	location as string
+	response as string
+	server as string
+	set_cookie as string 
+	upgrade as string
+	www_authenticate as string
+
+end type
+
+dim http_header_values as header_values
+dim http_header as header_types
+
+'Initializes sockets for DNS and Requests.
+
+sub DHCP_DNS_init()
+	
+	dns_socket=sock_get("DNS")
+	dns_start(dns_socket)
+	request_socket=sock_get("REQ")
+	sock.num=request_socket
+	sock.protocol=PL_SOCK_PROTOCOL_TCP
+	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.httpportlist="80"
+	sock.txbuffrq(2)
+	sock.rxbuffrq(2)
+	sys.buffalloc()
+		
+end sub
+
+
+sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
+	
+	dim target_ip as string
+	
+	if(return_type=EN_DNS_RET_IP) then
+		target_ip = ddstr(return_string)
+		sock.num=request_socket
+		sock.targetip=target_ip
+		sock.targetport=80
+	end if
+	
+end sub
+
+'DNS finds IP address for specified domain name. Assigns this IP as the target IP for the Request socket.
+
+sub start_dns(url as string)
+	
+	header_state=RESPONSE
+	sock.num=dns_socket
+	get_path(url)
+	dns_query("www." + get_domain_name(url))	
+	
+end sub
+
+'Returns the domain name section of a given URL
+
+function get_domain_name(url as string) as string
+
+	if left(url, 4) = "www." then
+		get_domain_name=right(url,len(url)-4)
+	end if
+	
+	dim b as byte=instr(1,get_domain_name,".com",1)
+	get_domain_name=left(get_domain_name,b+3)
+		
+end function
+
+'Returns the path section of a given URL
+
+function get_path(url as string) as string
+
+	dim b as byte=instr(1,url,".com",1)
+	get_path=right(url,len(url)-b-3)
+		
+end function
+
+'Sends a POST request to the specified path on a specified domain name. 
+
+sub send_post_request(url as string, interface as pl_sock_interfaces) 
+	
+	dim request as string
+	
+	sock.num=request_socket
+	sock.targetinterface=interface
+	sock.connect()
+	
+	while sock.statesimple<>PL_SSTS_EST
+		doevents
+	wend
+	
+	request="POST " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0a\x0d\x0a"
+	sock.setdata(request)
+	sock.send()
+
+end sub
+
+'Sends a GET request to the specified path on a specified domain name. 
+
+sub send_get_request(url as string, interface as pl_sock_interfaces) 
+	
+	dim request as string
+	
+	sock.num=request_socket
+	sock.targetinterface=interface
+	sock.connect()
+	
+	while sock.statesimple<>PL_SSTS_EST
+		doevents
+	wend
+	
+	request="GET " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0a\x0d\x0a"
+	sock.setdata(request)
+	sock.send()
+
+end sub
+
+'Removes all HTTP headers.
+
+sub skip_http_headers(sock_number as byte)
+	
+	dim data as string
+	data=sock.peekdata(255)
+	dim startp as byte	
+	
+	while sock.rxlen>0
+		startp=instr(1,data,"\x0d\x0a\x0d\x0a", 1)
+		if startp=0 then
+			sock.getdata(230)
+		else 
+			sock.getdata(startp+3)
+			exit sub
+		end if
+	wend
+			
+end sub
+
+sub get_http_headers()
+
+	if sock.rxlen<4 then
+		exit sub
+	end if
+	
+	select case header_state
+	
+	case RESPONSE: 
+	
+		http_header.response=get_response()
+		update_header_state()
+
+	case KEY:
+		
+		http_header_values.key(b)=get_key()
+		update_header_state()
+	
+	case VALUE:
+	
+		http_header_values.value(b)=get_value()
+		update_header_state()
+		b=b+1	
+		c=c+1	
+		
+	case ASSIGN:
+		
+		assign_header_values()
+		http_debugprint("All Headers Assigned\r\n")
+		header_state=COMPLETE
+	
+	case COMPLETE:
+	
+		exit sub
+
+	case ERROR:
+	
+		http_debugprint("ERROR\r\n")
+		
+	end select
+	
+end sub
+
+function get_response() as string
+	
+	sock.getdata(9)
+	httpstring=sock.peekdata(255)
+	startp=instr(1,httpstring,"\x0d\x0a", 1)
+	get_response=sock.getdata(startp-1)
+	
+end function
+
+function get_key() as string
+	
+	httpstring=sock.peekdata(255)
+	startp=instr(1,httpstring,":", 1)
+	get_key=sock.getdata(startp-1)
+	http_debugprint(get_key + ": ")
+	
+end function
+
+function get_value() as string
+	
+	httpstring=sock.peekdata(255)
+	startp=instr(1,httpstring,"\x0d\x0a", 1)
+	get_value=sock.getdata(startp-1)
+	http_debugprint(get_value + "\r\n")
+	
+end function
+
+sub update_header_state()
+
+		httpstring=sock.peekdata(255)
+		if left(httpstring,4)="\x0d\x0a\x0d\x0a" then
+			sock.getdata(4)
+			header_state=ASSIGN
+		else if left(httpstring,2)="\x0d\x0a" then
+			sock.getdata(2)
+			header_state=KEY
+		else if left(httpstring,2)=": " then
+			sock.getdata(2)
+			header_state=VALUE
+		else
+			header_state=ERROR
+		end if
+		
+end sub
+
+'Iterates through http_header_values keys. If the key matches a header type stored in the header_types type, the value is assigned to the appropriate header type.
+
+sub assign_header_values()
+
+	for b=0 to c
+	
+		select case http_header_values.key(b)
+			
+			case "Access-Control-Allow-Origin": 		http_header.access_control_allow_origin=http_header_values.value(b)
+			case "Access-Control-Allow-Credentials":	http_header.access_control_allow_credentials=http_header_values.value(b)
+			case "Access-Control-Expose-Headers":		http_header.access_control_expose_headers=http_header_values.value(b)
+			case "Access-Control-Max-Age":				http_header.access_control_max_age=http_header_values.value(b)
+			case "Access-Control-Allow-Methods":		http_header.access_control_allow_methods=http_header_values.value(b)
+			case "Access-Control-Allow-Headers":		http_header.access_control_allow_headers=http_header_values.value(b)
+			case "Allow":								http_header.allow=http_header_values.value(b)
+			case "Content-Encoding":					http_header.content_encoding=http_header_values.value(b)
+			case "Content-Language":					http_header.content_language=http_header_values.value(b)
+			case "Content-Length":						http_header.content_length=http_header_values.value(b)
+			case "Content-Location":					http_header.content_location=http_header_values.value(b)
+			case "Content-Range":						http_header.content_range=http_header_values.value(b)
+			case "Content-Type":						http_header.content_type=http_header_values.value(b)
+			case "Expires":								http_header.expires=http_header_values.value(b)
+			case "Location":							http_header.location=http_header_values.value(b)
+			case "Server":								http_header.server=http_header_values.value(b)
+			case "Set-Cookie":							http_header.set_cookie=http_header_values.value(b)
+			case "Upgrade":								http_header.upgrade=http_header_values.value(b)
+			case "WWW-Authenticate":					http_header.www_authenticate=http_header_values.value(b)
+			case else:
+			
+		end select
+		
+	next b
+	
+end sub
+
+function get_header_value(header as string) as string
+	
+	dim b as byte
+	dim key, value as string
+	
+	
+	for b=0 to 20
+	
+		if header=http_header_values.key(b) then
+			get_header_value=http_header_values.value(b)
+			exit for
+		end if
+
+		if http_header_values.key(b)="" then
+			get_header_value="Header not found"
+			exit for
+		end if
+		
+	next b
+	
+end function
+
+sub on_sock_data_arrival()
+
+	dhcp_proc_data()
+	dns_proc_data()
+	
+	if sock.num=request_socket then
+		get_http_headers()
+	end if
+	
+end sub
+
+sub http_debugprint(s as string)
+	
+	#if HTTP_DEBUG_PRINT 
+		sys.debugprint(s)
+	#endif
+	
+end sub

@@ -1,0 +1,19 @@
+include "global.tbh"
+
+dim url as string = "www.tibbo.com/downloads/open/tios_int_rel/test.txt"
+
+'====================================================================
+
+sub on_sys_init()
+	
+	wln_start("Tibbo9F",WLN_SECURITY_MODE_WPA2,"16836836",PL_WLN_DOMAIN_FCC,YES,PL_WLN_ASCAN_INFRASTRUCTURE)
+	DHCP_DNS_init()
+	start_dns(url)
+
+end sub
+
+sub on_button_pressed()
+	
+	send_get_request(url, PL_SOCK_INTERFACE_WLN)
+	
+end sub

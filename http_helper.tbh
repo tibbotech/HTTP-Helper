@@ -1,0 +1,14 @@
+declare function get_response() as string
+declare function get_key() as string
+declare function get_value() as string
+declare function get_header_value(header as string) as string
+declare function get_domain_name(url as string) as string
+declare function get_path(url as string) as string
+
+declare sub update_header_state()
+declare sub assign_header_values()
+declare sub start_dns(domainName as string)
+declare sub DHCP_DNS_init()
+declare sub send_get_request(url as string, interface as pl_sock_interfaces) 
+declare sub send_post_request(url as string, interface as pl_sock_interfaces) 
+declare sub http_debugprint(s as string) 
