@@ -1,6 +1,7 @@
 'DEFINES-------------------------------------------------------------
 
-#define HTTP_DEBUG_PRINT 0
+#define HTTP_DEBUG_PRINT 1
+#define DHCP_DEBUG_PRINT 1
 
 #define WLN_CLK PL_IO_NUM_53
 #define WLN_CS PL_IO_NUM_49

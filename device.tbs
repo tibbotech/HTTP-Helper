@@ -71,12 +71,6 @@ sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhc
 	end if
 	
 end sub
-sub callback_dns_ok()
-
-	sys.debugprint("DNS OK")
-
-end sub
-
 sub callback_wln_failure(wln_state as en_wln_status_codes)
 end sub
 

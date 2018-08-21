@@ -4,52 +4,9 @@ dim startp as byte
 dim b,c as byte=0
 dim httpstring as string
 dim dns_socket, request_socket, upgrade_socket as byte
-dim dns_started as boolean=false
-
-enum header_states
-
-	RESPONSE,
-	KEY,
-	VALUE,
-	ASSIGN,
-	COMPLETE,
-	ERROR
-	
-end enum
-
+dim current_http_state as http_state
 dim header_state as header_states=RESPONSE
 
-type header_values
-
-	key(20) as string
-	value(20) as string
-
-end type
-
-type header_types
-
-	access_control_allow_origin as string
-	access_control_allow_credentials as string
-	access_control_expose_headers as string
-	access_control_max_age as string
-	access_control_allow_methods as string 
-	access_control_allow_headers as string  	 
-	allow as string
-	content_encoding as string   	 
-	content_language as string
-	content_length as string
-	content_location as string
-	content_range as string
-	content_type as string
-	expires as string
-	location as string
-	response as string
-	server as string
-	set_cookie as string 
-	upgrade as string
-	www_authenticate as string
-
-end type
 
 dim http_header_values as header_values
 dim http_header as header_types
@@ -87,12 +44,12 @@ end sub
 
 'DNS finds IP address for specified domain name. Assigns this IP as the target IP for the Request socket.
 
-sub start_dns(url as string)
+sub start_dns(domainname as string)
 	
+	current_http_state.state=DNS_NOT_ACQUIRED
 	header_state=RESPONSE
 	sock.num=dns_socket
-	get_path(url)
-	dns_query("www." + get_domain_name(url))	
+	dns_query(domainname)	
 	
 end sub
 
@@ -140,7 +97,13 @@ end sub
 
 'Sends a GET request to the specified path on a specified domain name. 
 
-sub send_get_request(url as string, interface as pl_sock_interfaces) 
+sub send_get_request(domainname as string, path as string, interface as pl_sock_interfaces) 
+	
+	current_http_state.state=DNS_NOT_ACQUIRED
+	start_dns(domainname)
+	while current_http_state.state<>DNS_ACQUIRED
+		doevents
+	wend
 	
 	dim request as string
 	
@@ -152,7 +115,7 @@ sub send_get_request(url as string, interface as pl_sock_interfaces)
 		doevents
 	wend
 	
-	request="GET " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0a\x0d\x0a"
+	request="GET " + path + " HTTP/1.1\x0d\x0aHost: " + domainname + "\x0d\x0a\x0d\x0a"
 	sock.setdata(request)
 	sock.send()
 
@@ -160,27 +123,39 @@ end sub
 
 'Removes all HTTP headers.
 
-sub skip_http_headers(sock_number as byte)
+sub skip_http_headers()
 	
-	dim data as string
-	data=sock.peekdata(255)
-	dim startp as byte	
+	select case header_state
 	
-	while sock.rxlen>0
-		startp=instr(1,data,"\x0d\x0a\x0d\x0a", 1)
-		if startp=0 then
-			sock.getdata(230)
-		else 
-			sock.getdata(startp+3)
-			exit sub
-		end if
-	wend
-			
+	case RESPONSE: 
+		
+		dim data as string
+		data=sock.peekdata(255)
+		dim startp as byte	
+		
+		while sock.rxlen>0
+			startp=instr(1,data,"\x0d\x0a\x0d\x0a", 1)
+			if startp=0 then
+				sock.getdata(230)
+			else 
+				sock.getdata(startp+3)
+				current_http_state.state=HTTP_HEADERS_PROCESSED
+				header_state=COMPLETE
+				exit sub
+			end if
+		wend
+	
+	case COMPLETE:
+	
+		exit sub
+		
+	end select
+				
 end sub
 
 sub get_http_headers()
 
-	if sock.rxlen<4 then
+	if sock.num<>request_socket or current_http_state.state=DNS_NOT_ACQUIRED or sock.rxlen<4 then
 		exit sub
 	end if
 	
@@ -206,8 +181,8 @@ sub get_http_headers()
 	case ASSIGN:
 		
 		assign_header_values()
-		http_debugprint("All Headers Assigned\r\n")
 		header_state=COMPLETE
+		current_http_state.state=HTTP_HEADERS_PROCESSED
 	
 	case COMPLETE:
 	
@@ -306,7 +281,6 @@ function get_header_value(header as string) as string
 	dim b as byte
 	dim key, value as string
 	
-	
 	for b=0 to 20
 	
 		if header=http_header_values.key(b) then
@@ -323,14 +297,23 @@ function get_header_value(header as string) as string
 	
 end function
 
+function get_http_content() as string
+	
+	if sock.num<>request_socket or current_http_state.state<>HTTP_HEADERS_PROCESSED then
+		exit function
+	end if
+	
+	get_http_content=sock.getdata(255)
+	http_debugprint(get_http_content)	
+	
+end function
+
 sub on_sock_data_arrival()
 
 	dhcp_proc_data()
 	dns_proc_data()
-	
-	if sock.num=request_socket then
-		get_http_headers()
-	end if
+	skip_http_headers()	
+	get_http_content()
 	
 end sub
 
@@ -341,3 +324,10 @@ sub http_debugprint(s as string)
 	#endif
 	
 end sub
+
+sub callback_dns_ok()
+
+	current_http_state.state=DNS_ACQUIRED
+
+end sub
+
