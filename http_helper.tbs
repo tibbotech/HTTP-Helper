@@ -8,9 +8,6 @@ dim current_http_state as http_state
 dim header_state as header_states=RESPONSE
 dim http_methods(6) as string = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
 
-
-
-
 dim http_header_values as header_values
 dim http_header as header_types
 
@@ -103,8 +100,8 @@ sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, inter
 		doevents
 	wend	
 	
-	if method=HTTP_GET then
-		if len(data) > 0 then
+	if method=HTTP_GET or method=HTTP_HEAD then
+		if len(data) > 0 then 
 			request=http_methods(method) + " " + get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0a\x0d\x0a"
 		else
 			request=http_methods(method) + " " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0a\x0d\x0a"
@@ -112,8 +109,7 @@ sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, inter
 	else
 		request=http_methods(method) + " " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0aContent-Length: " + str(len(data)) + "\x0d\x0a\x0d\x0a" + data
 	end if
-	
-	
+
 	sock.setdata(request)
 	sock.send()
 
@@ -306,15 +302,6 @@ function get_http_content() as string
 	http_debugprint(get_http_content)	
 	
 end function
-
-sub on_sock_data_arrival()
-
-	dhcp_proc_data()
-	dns_proc_data()
-	get_http_headers()	
-	get_http_content()
-	
-end sub
 
 sub http_debugprint(s as string)
 	

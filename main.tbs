@@ -1,13 +1,7 @@
 include "global.tbh"
 
-
-'dim url as string = "txt2html.sourceforge.net/sample.txt"
-'dim post_data as string = "name1=value1&name2=value2"
-
-
-dim url as string = "httpbin.org/get"
+dim url as string = "httpbin.org/post"
 dim data as string = "name1=value1&name2=value2"
-
 
 sub on_sys_init()
 	
@@ -18,7 +12,15 @@ end sub
 
 sub on_button_pressed()
 
-	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data)
-'	send_get_request(url, PL_SOCK_INTERFACE_NET)
+	http_send_request(url, HTTP_POST, PL_SOCK_INTERFACE_NET, data)
+	
+end sub
+
+sub on_sock_data_arrival()
+
+	dhcp_proc_data()
+	dns_proc_data()
+	get_http_headers()	
+	get_http_content()
 	
 end sub

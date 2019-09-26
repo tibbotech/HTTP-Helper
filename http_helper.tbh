@@ -75,9 +75,12 @@ declare function get_value() as string
 declare function get_header_value(header as string) as string
 declare function get_domain_name(url as string) as string
 declare function get_path(url as string) as string
+declare function get_http_content() as string
 
 declare sub update_header_state()
 declare sub assign_header_values()
+declare sub get_http_headers()
+declare sub skip_http_headers()
 declare sub start_dns(domainName as string)
 declare sub DHCP_DNS_init()
 declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string) 
