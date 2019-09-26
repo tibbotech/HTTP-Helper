@@ -1,6 +1,6 @@
 [project]
 version=1
-platform=TPP3W(G2)
+platform=TPP2W(G2)
 src_lib_ver=2_01_02
 name=HTTP-Helper
 output=HTTP-Helper.tpc
@@ -14,7 +14,11 @@ address=
 [address2]
 platform=TPP3W(G2)
 transport=udp_winpcap
-address=0.1.2.3.4.231
+address=0.36.119.86.46.219
+[address3]
+platform=TPP2W(G2)
+transport=udp_winpcap
+address=0.36.119.86.46.219
 [file1]
 path=main.tbs
 type=basic

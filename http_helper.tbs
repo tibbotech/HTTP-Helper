@@ -6,6 +6,9 @@ dim httpstring as string
 dim dns_socket, request_socket, upgrade_socket as byte
 dim current_http_state as http_state
 dim header_state as header_states=RESPONSE
+dim http_methods(6) as string = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
+
+
 
 
 dim http_header_values as header_values
@@ -56,13 +59,18 @@ end sub
 'Returns the domain name section of a given URL
 
 function get_domain_name(url as string) as string
-
-	if left(url, 4) = "www." then
-		get_domain_name=right(url,len(url)-4)
+	dim b as byte
+	if left(url, 4) = "http" then
+		b=instr(1,url,"/",2)
+		url=right(url,len(url)-b)
 	end if
 	
-	dim b as byte=instr(1,get_domain_name,".com",1)
-	get_domain_name=left(get_domain_name,b+3)
+	if left(url, 4) = "www." then
+		url=right(url,len(url)-4)
+	end if
+	
+	b=instr(1,url,"/",1)
+	get_domain_name=left(url,b-1)
 		
 end function
 
@@ -70,37 +78,17 @@ end function
 
 function get_path(url as string) as string
 
-	dim b as byte=instr(1,url,".com",1)
-	get_path=right(url,len(url)-b-3)
+	dim b as byte=instr(3,url,"/",1)
+	get_path=right(url,len(url)-b+1)
 		
 end function
 
-'Sends a POST request to the specified path on a specified domain name. 
+'Sends a HTTP request to the specified path on a specified domain name. 
 
-sub send_post_request(url as string, interface as pl_sock_interfaces) 
-	
-	dim request as string
-	
-	sock.num=request_socket
-	sock.targetinterface=interface
-	sock.connect()
-	
-	while sock.statesimple<>PL_SSTS_EST
-		doevents
-	wend
-	
-	request="POST " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0a\x0d\x0a"
-	sock.setdata(request)
-	sock.send()
-
-end sub
-
-'Sends a GET request to the specified path on a specified domain name. 
-
-sub send_get_request(domainname as string, path as string, interface as pl_sock_interfaces) 
+sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string) 
 	
 	current_http_state.state=DNS_NOT_ACQUIRED
-	start_dns(domainname)
+	start_dns(get_domain_name(url))
 	while current_http_state.state<>DNS_ACQUIRED
 		doevents
 	wend
@@ -113,9 +101,19 @@ sub send_get_request(domainname as string, path as string, interface as pl_sock_
 	
 	while sock.statesimple<>PL_SSTS_EST
 		doevents
-	wend
+	wend	
 	
-	request="GET " + path + " HTTP/1.1\x0d\x0aHost: " + domainname + "\x0d\x0a\x0d\x0a"
+	if method=HTTP_GET then
+		if len(data) > 0 then
+			request=http_methods(method) + " " + get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0a\x0d\x0a"
+		else
+			request=http_methods(method) + " " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0a\x0d\x0a"
+		end if
+	else
+		request=http_methods(method) + " " + get_path(url) + " HTTP/1.1\x0d\x0aHost: " + get_domain_name(url) + "\x0d\x0aContent-Type: text/plain\x0d\x0aContent-Length: " + str(len(data)) + "\x0d\x0a\x0d\x0a" + data
+	end if
+	
+	
 	sock.setdata(request)
 	sock.send()
 
@@ -137,6 +135,7 @@ sub skip_http_headers()
 			startp=instr(1,data,"\x0d\x0a\x0d\x0a", 1)
 			if startp=0 then
 				sock.getdata(230)
+				data=sock.peekdata(255)
 			else 
 				sock.getdata(startp+3)
 				current_http_state.state=HTTP_HEADERS_PROCESSED
@@ -312,7 +311,7 @@ sub on_sock_data_arrival()
 
 	dhcp_proc_data()
 	dns_proc_data()
-	skip_http_headers()	
+	get_http_headers()	
 	get_http_content()
 	
 end sub

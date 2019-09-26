@@ -1,12 +1,27 @@
 enum HTTP_REQ_STATE
+
 	DNS_NOT_ACQUIRED,
 	DNS_ACQUIRED,
 	HTTP_HEADERS_PROCESSED,
 	HTTP_CONTENT_AQUIRED
+
+end enum
+
+enum HTTP_REQUEST_METHODS
+
+	HTTP_GET,
+	HTTP_HEAD,
+	HTTP_POST,
+	HTTP_PUT,
+	HTTP_DELETE,
+	HTTP_PATCH
+
 end enum
 
 type http_state
+
 	state as enum HTTP_REQ_STATE
+
 end type
 
 enum header_states
@@ -17,9 +32,8 @@ enum header_states
 	ASSIGN,
 	COMPLETE,
 	ERROR
-	
-end enum
 
+end enum
 
 type header_values
 
@@ -53,9 +67,7 @@ type header_types
 
 end type
 
-
 declare current_http_state as http_state
-
 
 declare function get_response() as string
 declare function get_key() as string
@@ -68,6 +80,5 @@ declare sub update_header_state()
 declare sub assign_header_values()
 declare sub start_dns(domainName as string)
 declare sub DHCP_DNS_init()
-declare sub send_get_request(domainname as string, path as string, interface as pl_sock_interfaces) 
-declare sub send_post_request(url as string, interface as pl_sock_interfaces) 
+declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string) 
 declare sub http_debugprint(s as string) 
