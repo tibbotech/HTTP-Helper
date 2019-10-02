@@ -27,6 +27,10 @@ This function sends the HTTP request. In the sample code, it is triggered by pre
    2. PL_SOCK_INTERFACE_WLN
 4. **data** - The data to be sent to the server. Not applicable for HTTP_GET and HTTP_HEAD methods so an empty string should be passed in these cases.<br />
 
-#### get_http_headers()	<br />
+#### get_http_headers()
+
+<br />
+
+
 
 #### get_http_content()<br />

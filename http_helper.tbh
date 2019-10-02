@@ -35,12 +35,12 @@ enum header_states
 
 end enum
 
-type header_values
+'type header_values
 
-	key(20) as string
-	value(20) as string
+''	key(30) as string
+''	value(30) as string
 
-end type
+'end type
 
 type header_types
 
@@ -69,19 +69,29 @@ end type
 
 declare current_http_state as http_state
 
-declare function get_response() as string
-declare function get_key() as string
-declare function get_value() as string
-declare function get_header_value(header as string) as string
-declare function get_domain_name(url as string) as string
-declare function get_path(url as string) as string
+declare function http_get_response() as string
+declare function http_get_header_type() as string
+declare function http_get_header_value() as string
 declare function get_http_content() as string
 
+declare function get_header_value(header as string) as string
+declare function http_get_domain_name(url as string) as string
+declare function http_get_path(url as string) as string
+declare function get_data(size as byte) as string
+declare function peek_data(size as byte) as string
+
+declare sub http_proc_data()
 declare sub update_header_state()
 declare sub assign_header_values()
 declare sub get_http_headers()
 declare sub skip_http_headers()
-declare sub start_dns(domainName as string)
-declare sub DHCP_DNS_init()
-declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string) 
+declare sub dns_init_sockets()
+declare sub on_http_headers_complete()
+
+declare sub dns_init(domainname as string)
 declare sub http_debugprint(s as string) 
+declare sub on_http_content_arrival(data as string)
+declare sub on_http_reponse_code_arrival(http_response as string)
+declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
+declare sub on_http_header_arrival(header_type as string, header_value as string)
+declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string, request_socket as byte, request_ip as string, request_port as word)

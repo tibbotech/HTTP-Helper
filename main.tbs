@@ -1,18 +1,25 @@
 include "global.tbh"
 
-dim url as string = "httpbin.org/post"
-dim data as string = "name1=value1&name2=value2"
+
+'dim url as string = "http://httpbin.org/get"
+'dim data as string = "name1=value1&name2=value2"
+'dim request_port as word = 80
+
+dim url as string = "https://192.168.1.170/"
+dim data as string = ""
+dim request_port as word = 443
 
 sub on_sys_init()
 	
-	DHCP_DNS_init()
+	dns_init_sockets()
+	dns_init(http_get_domain_name(url))
 	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
 
 end sub
 
 sub on_button_pressed()
 
-	http_send_request(url, HTTP_POST, PL_SOCK_INTERFACE_NET, data)
+	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data, request_socket, "192.168.1.170", request_port)
 	
 end sub
 
@@ -20,7 +27,33 @@ sub on_sock_data_arrival()
 
 	dhcp_proc_data()
 	dns_proc_data()
-	get_http_headers()	
-	get_http_content()
+	http_proc_data()
 	
+end sub
+
+sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock_state_simple)
+	
+	http_sock_state_update(newstatesimple)
+		
+end sub
+
+sub on_http_reponse_code_arrival(http_response as string)
+
+	sys.debugprint("Response: " + http_response +"\r\n")
+	
+end sub
+
+sub on_http_header_arrival(header_type as string, header_value as string)
+
+	sys.debugprint("Type: " + header_type)
+	sys.debugprint(" Value: " + header_value +"\r\n")
+
+end sub
+
+sub on_http_headers_complete()
+	sys.debugprint("HEADERS COMPLETE")
+end sub
+
+sub on_http_content_arrival(data as string)
+	http_debugprint(data)	
 end sub

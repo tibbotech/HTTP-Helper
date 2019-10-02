@@ -1,7 +1,46 @@
 include "global.tbh"
 dim wln_dhcp_fail_ctr as byte 
-
+dim dns_socket, request_socket, upgrade_socket as byte
+dim request_ip as string
 '====================================================================
+
+'Initializes sockets for DNS requests.
+
+sub dns_init_sockets()
+	
+	dns_socket=sock_get("DNS")
+	dns_start(dns_socket)
+	request_socket=sock_get("REQ")
+	sock.num=request_socket
+	sock.protocol=PL_SOCK_PROTOCOL_TCP
+	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.httpportlist="443"
+	sock.txbuffrq(2)
+	sock.rxbuffrq(2)
+	sys.buffalloc()
+		
+end sub
+
+sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
+	
+	if(return_type=EN_DNS_RET_IP) then
+		request_ip = ddstr(return_string)
+		current_http_state.state=DNS_ACQUIRED
+	end if
+	
+end sub
+
+'DNS finds IP address for specified domain name. Assigns this IP as the target IP for the Request socket.
+
+sub dns_init(domainname as string)
+	
+	current_http_state.state=DNS_NOT_ACQUIRED
+'	header_state=RESPONSE
+	sock.num=dns_socket
+	dns_query(domainname)	
+	
+end sub
+
 
 sub on_sys_timer()
 
@@ -71,6 +110,7 @@ sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhc
 	end if
 	
 end sub
+
 sub callback_wln_failure(wln_state as en_wln_status_codes)
 end sub
 
