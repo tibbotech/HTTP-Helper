@@ -86,6 +86,7 @@ declare sub assign_header_values()
 declare sub get_http_headers()
 declare sub skip_http_headers()
 declare sub dns_init_sockets()
+declare sub init_request_socket()
 declare sub on_http_headers_complete()
 
 declare sub dns_init(domainname as string)

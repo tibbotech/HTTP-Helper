@@ -10,14 +10,7 @@ sub dns_init_sockets()
 	
 	dns_socket=sock_get("DNS")
 	dns_start(dns_socket)
-	request_socket=sock_get("REQ")
-	sock.num=request_socket
-	sock.protocol=PL_SOCK_PROTOCOL_TCP
-	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
-	sock.httpportlist="443"
-	sock.txbuffrq(2)
-	sock.rxbuffrq(2)
-	sys.buffalloc()
+	
 		
 end sub
 

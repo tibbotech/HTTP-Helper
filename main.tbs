@@ -1,25 +1,39 @@
 include "global.tbh"
 
 
-'dim url as string = "http://httpbin.org/get"
-'dim data as string = "name1=value1&name2=value2"
-'dim request_port as word = 80
-
-dim url as string = "https://192.168.1.170/"
+dim url as string = "https://google.com"
 dim data as string = ""
 dim request_port as word = 443
+
+'dim url as string = "https://192.168.1.170/"
+'dim data as string = ""
+'dim request_port as word = 443
 
 sub on_sys_init()
 	
 	dns_init_sockets()
+	init_request_socket()
 	dns_init(http_get_domain_name(url))
 	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
 
 end sub
 
+sub init_request_socket()
+
+	request_socket=sock_get("REQ")
+	sock.num=request_socket
+	sock.protocol=PL_SOCK_PROTOCOL_TCP
+	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.httpportlist="443"
+	sock.txbuffrq(2)
+	sock.rxbuffrq(16)
+	sys.buffalloc()
+
+end sub
+
 sub on_button_pressed()
 
-	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data, request_socket, "192.168.1.170", request_port)
+	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data, request_socket, request_ip, request_port)
 	
 end sub
 
