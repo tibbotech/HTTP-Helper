@@ -35,10 +35,17 @@ enum header_states
 
 end enum
 
+type dns_lookup
+
+	socket as byte
+	index as byte
+	
+end type
+
 'type header_values
 
-''	key(30) as string
-''	value(30) as string
+'	key(30) as string
+'	value(30) as string
 
 'end type
 
@@ -68,6 +75,7 @@ type header_types
 end type
 
 declare current_http_state as http_state
+declare dns_lookup_variables as dns_lookup
 
 declare function http_get_response() as string
 declare function http_get_header_type() as string
@@ -85,14 +93,16 @@ declare sub update_header_state()
 declare sub assign_header_values()
 declare sub get_http_headers()
 declare sub skip_http_headers()
-declare sub dns_init_sockets()
-declare sub init_request_socket()
+declare sub init_http_request_socket()
 declare sub on_http_headers_complete()
 
-declare sub dns_init(domainname as string)
 declare sub http_debugprint(s as string) 
 declare sub on_http_content_arrival(data as string)
 declare sub on_http_reponse_code_arrival(http_response as string)
 declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 declare sub on_http_header_arrival(header_type as string, header_value as string)
 declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string, request_socket as byte, request_ip as string, request_port as word)
+declare sub http_generate_dns_lookup_list(urls as string)
+
+declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
+declare sub http_dns_answer_ok()

@@ -9,6 +9,8 @@
 #define WLN_DO PL_IO_NUM_50
 #define WLN_RST PL_IO_NUM_51
 
+#define HTTP_DNS_URLS "http://httpbin.org,http://google.com,http://www.tibbo.com,http://www.facebook.com,http://www.yahoo.com,http://www.twitter.com,http://www.instagram.com,http://www.ebay.com,http://www.netflix.com,http://www.wikipedia.com"
+
 'INCLUDES------------------------------------------------------------
 
 include "sock\trunk\sock.tbh"
@@ -27,8 +29,10 @@ const ALT_WLN_IP="192.168.1.41"
 const ALT_WLN_GATEWAY_IP="192.168.1.1"
 const ALT_WLN_NETMASK="255.255.255.0"
 
+const NUM_OF_URLS=10
+
 declare request_socket as byte
-declare request_ip as string
+
 
 CONST PL_TLS_EST = &h82
 '--------------------------------------------------------------------

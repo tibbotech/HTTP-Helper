@@ -1,8 +1,6 @@
 include "global.tbh"
 
 dim startp as byte
-dim current_url as string
-dim b,c as byte=0
 dim httpstring as string
 dim current_http_state as http_state
 dim header_state as header_states=RESPONSE
@@ -10,6 +8,9 @@ dim http_methods(6) as string(7) = {"GET", "HEAD", "POST", "PUT", "DELETE", "PAT
 dim http_response, header_type, header_value as string
 dim isSSL as boolean
 dim request as string
+dim dns_lookup_list(2,NUM_OF_URLS) as string(25)
+
+dim dns_lookup_variables as dns_lookup
 
 'dim http_header_values as header_values
 'dim http_header as header_types
@@ -128,8 +129,39 @@ sub skip_http_headers()
 				
 end sub
 
-sub get_http_headers()
+sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
+	
+	if(return_type=EN_DNS_RET_IP) then
+		dns_lookup_list(1,dns_lookup_variables.index)=ddstr(return_string)
+	end if
+	
+end sub
 
+sub http_dns_answer_ok()
+
+	dns_lookup_variables.index=dns_lookup_variables.index+1
+	if dns_lookup_variables.index<NUM_OF_URLS then
+		dns_query(http_get_domain_name(dns_lookup_list(0,dns_lookup_variables.index)))
+	else
+		current_http_state.state=DNS_ACQUIRED
+	end if
+	
+end sub
+
+sub init_http_request_socket()
+
+	request_socket=sock_get("REQ")
+	sock.num=request_socket
+	sock.protocol=PL_SOCK_PROTOCOL_TCP
+	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.httpportlist="443"
+	sock.txbuffrq(2)
+	sock.rxbuffrq(16)
+	sys.buffalloc()
+
+end sub
+
+sub get_http_headers()
 
 	if sock.num<>request_socket then
 		exit sub
@@ -244,7 +276,7 @@ end sub
 
 sub callback_dns_ok()
 
-	current_http_state.state=DNS_ACQUIRED
+	http_dns_answer_ok()
 
 end sub
 
@@ -289,6 +321,35 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	end	if
 	
 end sub
+
+
+sub split_to_array(original_string as string, delimiter as string)
+	
+	dim pos, b as byte
+	for b=0 to NUM_OF_URLS-1
+		pos=instr(1,original_string,delimiter,1)
+		dim url as string=left(original_string,pos-1)
+		dns_lookup_list(0,b)=url
+		original_string=right(original_string,len(original_string)-pos)
+	next b
+	
+end sub
+
+
+sub http_generate_dns_lookup_list(urls as string)
+
+	dns_lookup_variables.index=0
+	current_http_state.state=DNS_NOT_ACQUIRED
+	dns_lookup_variables.socket=sock_get("DNS")
+	sock.num=dns_lookup_variables.socket
+	dns_start(dns_lookup_variables.socket)
+	dns_connect(PL_SOCK_INTERFACE_NET, "8.8.4.4", 0)
+	split_to_array(urls,",")
+	dns_query(http_get_domain_name(dns_lookup_list(0,0)))	
+	
+end sub
+
+
 
 
 'Iterates through http_header_values keys. If the key matches a header type stored in the header_types type, the value is assigned to the appropriate header type.

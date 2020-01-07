@@ -1,79 +1,38 @@
 include "global.tbh"
-
 dim wln_dhcp_fail_ctr as byte 
-dim request_socket as byte
-
-dim url as string = "http://httpbin.org/get"
-dim data as string = "name1=value1&name2=value2"
-dim request_port as word = 80
-dim urls as string = HTTP_DNS_URLS
-
-sub on_sys_init()
-
-	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
-
-end sub
-
-sub on_button_pressed()
-
-	http_generate_dns_lookup_list(urls)
-'	init_http_request_socket()
-'	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data, request_socket, request_ip, request_port)
-	 
-end sub
-
-sub on_sock_data_arrival()
-
-	dhcp_proc_data()
-	dns_proc_data()
-	http_proc_data()
-	
-end sub
-
-sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock_state_simple)
-	
-	http_sock_state_update(newstatesimple)
-		
-end sub
-
-sub on_http_reponse_code_arrival(http_response as string)
-
-	sys.debugprint("Response: " + http_response +"\r\n")
-	
-end sub 
-
-sub on_http_header_arrival(header_type as string, header_value as string)
-
-	sys.debugprint("Type: " + header_type)
-	sys.debugprint(" Value: " + header_value +"\r\n")
-
-end sub
-
-sub on_http_headers_complete()
-
-	sys.debugprint("HEADERS COMPLETE")
-
-end sub
-
-sub on_http_content_arrival(data as string)
-
-	http_debugprint(data)	
-	
-end sub
-
-
-
+dim dns_socket, request_socket, upgrade_socket as byte
+dim request_ip as string
 '====================================================================
 
 'Initializes sockets for DNS requests.
 
+sub dns_init_sockets()
+	
+	dns_socket=sock_get("DNS")
+	dns_start(dns_socket)
+	
+end sub
+
 sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
-	http_dns_answer_acquired(return_type, return_string)
-
+	if(return_type=EN_DNS_RET_IP) then
+		request_ip = ddstr(return_string)
+		current_http_state.state=DNS_ACQUIRED
+	end if
+	
 end sub
 
 'DNS finds IP address for specified domain name. Assigns this IP as the target IP for the Request socket.
+
+sub dns_init(domainname as string)
+	
+	current_http_state.state=DNS_NOT_ACQUIRED
+'	header_state=RESPONSE
+	sock.num=dns_socket
+	dns_query(domainname)	
+	
+end sub
+
 
 sub on_sys_timer()
 
@@ -112,6 +71,7 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			net.gatewayip=gateway_ip
 			net.netmask=netmask
 		end if
+		dns_connect(PL_SOCK_INTERFACE_NET, "8.8.4.4", 0)
 	end if
 	
 	if interface=PL_SOCK_INTERFACE_WLN then
@@ -123,6 +83,7 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			wln.gatewayip=gateway_ip
 			wln.netmask=netmask
 		end if
+		dns_connect(PL_SOCK_INTERFACE_WLN, "8.8.4.4", 0)
 	end if
 				
 end sub
