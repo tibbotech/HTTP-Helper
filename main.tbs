@@ -1,13 +1,5 @@
 include "global.tbh"
 
-dim wln_dhcp_fail_ctr as byte 
-dim request_socket as byte
-
-dim url as string = "http://httpbin.org/get"
-dim data as string = "name1=value1&name2=value2"
-dim request_port as word = 80
-dim urls as string = HTTP_DNS_URLS
-
 sub on_sys_init()
 
 	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
@@ -16,9 +8,12 @@ end sub
 
 sub on_button_pressed()
 
-	http_generate_dns_lookup_list(urls)
-'	init_http_request_socket()
-'	http_send_request(url, HTTP_GET, PL_SOCK_INTERFACE_NET, data, request_socket, request_ip, request_port)
+	http_send_request("http://www.wikipedia.org:80", HTTP_GET, PL_SOCK_INTERFACE_NET,"","","")
+	http_send_request("http://httpbin.org/get", HTTP_GET, PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
+	http_send_request("http://httpbin.org:80/get", HTTP_GET, PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
+	http_send_request("http://httpbin.org/get", HTTP_GET, PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
+	http_send_request("http://httpbin.org/get", HTTP_GET, PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
+	http_send_request("http://httpbin.org/get", HTTP_GET, PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
 	 
 end sub
 
@@ -27,7 +22,7 @@ sub on_sock_data_arrival()
 	dhcp_proc_data()
 	dns_proc_data()
 	http_proc_data()
-	
+		
 end sub
 
 sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock_state_simple)
@@ -38,21 +33,20 @@ end sub
 
 sub on_http_reponse_code_arrival(http_response as string)
 
+	sys.debugprint("Data received from data: " + str(sock.num) + "\r\n") 
 	sys.debugprint("Response: " + http_response +"\r\n")
 	
 end sub 
 
 sub on_http_header_arrival(header_type as string, header_value as string)
-
+	
+	sys.debugprint("Socket Number: " + str(sock.num)) 
 	sys.debugprint("Type: " + header_type)
-	sys.debugprint(" Value: " + header_value +"\r\n")
-
+	sys.debugprint("\t\tValue: " + header_value +"\r\n")
+	
 end sub
 
 sub on_http_headers_complete()
-
-	sys.debugprint("HEADERS COMPLETE")
-
 end sub
 
 sub on_http_content_arrival(data as string)
@@ -62,18 +56,29 @@ sub on_http_content_arrival(data as string)
 end sub
 
 
-
-'====================================================================
-
-'Initializes sockets for DNS requests.
-
 sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
 	http_dns_answer_acquired(return_type, return_string)
 
 end sub
 
-'DNS finds IP address for specified domain name. Assigns this IP as the target IP for the Request socket.
+sub callback_dns_lookup_list_ok()
+	
+	sys.debugprint("DNS Lookup List Generated\r\n")
+	
+end sub
+
+sub http_dns_not_acquired(url as string)
+	
+	sys.debugprint("DNS not acquired for URL: " + url + "\r\n")
+	
+end sub
+
+sub http_url_not_in_lookup_list(url as string)
+
+	sys.debugprint("URL not found in lookup list: " + url)
+	
+end sub
 
 sub on_sys_timer()
 
@@ -124,22 +129,12 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			wln.netmask=netmask
 		end if
 	end if
+	
+	http_generate_dns_lookup_list()
 				
 end sub
 
-sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)
-
-	if interface=PL_SOCK_INTERFACE_WLN then
-		if wln_dhcp_fail_ctr>=DHCP_FAIL_LIMIT then
-			wln.ip=ALT_WLN_IP
-			wln.gatewayip=ALT_WLN_GATEWAY_IP
-			wln.netmask=ALT_WLN_NETMASK
-			dhcp_stop(PL_SOCK_INTERFACE_WLN)
-		else
-			wln_dhcp_fail_ctr=wln_dhcp_fail_ctr+1
-		end if
-	end if
-	
+sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)	
 end sub
 
 sub callback_wln_failure(wln_state as en_wln_status_codes)

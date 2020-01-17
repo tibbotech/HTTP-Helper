@@ -1,11 +1,18 @@
-enum HTTP_REQ_STATE
+#ifndef HTTP_NUM_OF_URLS
+	#define HTTP_NUM_OF_URLS 10
+#endif
 
-	DNS_NOT_ACQUIRED,
-	DNS_ACQUIRED,
-	HTTP_HEADERS_PROCESSED,
-	HTTP_CONTENT_AQUIRED
+#ifndef HTTP_MAX_URL_LEN
+	#define HTTP_MAX_URL_LEN 255
+#endif
 
-end enum
+#ifndef HTTP_NUM_OF_REQS
+	#define HTTP_NUM_OF_REQS 10
+#endif
+
+#ifndef HTTP_MAX_REQ_LEN
+	#define HTTP_MAX_REQ_LEN 255
+#endif
 
 enum HTTP_REQUEST_METHODS
 
@@ -18,17 +25,19 @@ enum HTTP_REQUEST_METHODS
 
 end enum
 
-type http_state
+enum reply_states
+	
+	FREE,
+	REQUEST_NOT_SENT,
+	REQUEST_SENT,
+	HTTP_RESPONSE_PROCESSED,
+	HTTP_HEADERS_PROCESSED
 
-	state as enum HTTP_REQ_STATE
-
-end type
+end enum
 
 enum header_states
 
-	RESPONSE,
 	KEY,
-	VALUE,
 	ASSIGN,
 	COMPLETE,
 	ERROR
@@ -37,72 +46,49 @@ end enum
 
 type dns_lookup
 
-	socket as byte
 	index as byte
+	url(HTTP_NUM_OF_URLS) as string(HTTP_MAX_URL_LEN)
+	ip(HTTP_NUM_OF_URLS) as string(15)
+	ssl(HTTP_NUM_OF_URLS) as boolean
+	port(HTTP_NUM_OF_URLS) as word 
+		
+end type
+
+type http_request
+
+	index as byte
+	state(HTTP_NUM_OF_REQS) as reply_states
+	socket(HTTP_NUM_OF_REQS) as byte
+	request(HTTP_NUM_OF_URLS) as string(HTTP_MAX_REQ_LEN)
+	remaining_bytes(HTTP_NUM_OF_URLS) as word
 	
 end type
 
-'type header_values
-
-'	key(30) as string
-'	value(30) as string
-
-'end type
-
-type header_types
-
-	access_control_allow_origin as string
-	access_control_allow_credentials as string
-	access_control_expose_headers as string
-	access_control_max_age as string
-	access_control_allow_methods as string 
-	access_control_allow_headers as string  	 
-	allow as string
-	content_encoding as string   	 
-	content_language as string
-	content_length as string
-	content_location as string
-	content_range as string
-	content_type as string
-	expires as string
-	location as string
-	response as string
-	server as string
-	set_cookie as string 
-	upgrade as string
-	www_authenticate as string
-
-end type
-
-declare current_http_state as http_state
-declare dns_lookup_variables as dns_lookup
-
-declare function http_get_response() as string
-declare function http_get_header_type() as string
-declare function http_get_header_value() as string
+declare function http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function get_http_content() as string
-
-declare function get_header_value(header as string) as string
-declare function http_get_domain_name(url as string) as string
 declare function http_get_path(url as string) as string
 declare function get_data(size as byte) as string
 declare function peek_data(size as byte) as string
+declare function http_check_socket_list() as byte
+declare function http_get_domain_name(url as string) as string
 
 declare sub http_proc_data()
-declare sub update_header_state()
-declare sub assign_header_values()
 declare sub get_http_headers()
-declare sub skip_http_headers()
-declare sub init_http_request_socket()
+declare sub http_init_request_socket(interface as pl_sock_interfaces, txbuffrq as byte, rxbuffrq as byte)
 declare sub on_http_headers_complete()
-
 declare sub http_debugprint(s as string) 
 declare sub on_http_content_arrival(data as string)
 declare sub on_http_reponse_code_arrival(http_response as string)
 declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 declare sub on_http_header_arrival(header_type as string, header_value as string)
-declare sub http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string, request_socket as byte, request_ip as string, request_port as word)
-declare sub http_generate_dns_lookup_list(urls as string)
-
+declare sub http_generate_dns_lookup_list()
+declare sub http_generate_request_string(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string)
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_dns_answer_ok()
+declare sub callback_dns_lookup_list_ok()
+declare sub http_dns_not_acquired(url as string)
+declare sub http_release_socket(index as byte)
+declare sub http_assign_free_index()
+declare sub http_dns_query()
+declare sub http_url_not_in_lookup_list(url as string)
+
