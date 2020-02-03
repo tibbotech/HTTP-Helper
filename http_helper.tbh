@@ -49,9 +49,7 @@ type dns_lookup
 	index as byte
 	url(HTTP_NUM_OF_URLS) as string(HTTP_MAX_URL_LEN)
 	ip(HTTP_NUM_OF_URLS) as string(15)
-	ssl(HTTP_NUM_OF_URLS) as boolean
-	port(HTTP_NUM_OF_URLS) as word 
-		
+	
 end type
 
 type http_request
@@ -59,12 +57,17 @@ type http_request
 	index as byte
 	state(HTTP_NUM_OF_REQS) as reply_states
 	socket(HTTP_NUM_OF_REQS) as byte
-	request(HTTP_NUM_OF_URLS) as string(HTTP_MAX_REQ_LEN)
-	remaining_bytes(HTTP_NUM_OF_URLS) as word
+	port(HTTP_NUM_OF_REQS) as word 
+	ssl(HTTP_NUM_OF_REQS) as boolean
+	request(HTTP_NUM_OF_REQS) as string(HTTP_MAX_REQ_LEN)
+	remaining_header_length(HTTP_NUM_OF_REQS) as word
+	remaining_content_length(HTTP_NUM_OF_REQS) as dword
+	method(HTTP_NUM_OF_REQS) as HTTP_REQUEST_METHODS
 	
 end type
 
-declare function http_send_request(byref url as string, method as HTTP_REQUEST_METHODS, interface as pl_sock_interfaces, byref data as string, txbuffrq as byte, rxbuffrq as byte) as byte
+declare function http_get_request(byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+declare function http_post_request(byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function get_http_content() as string
 declare function http_get_path(url as string) as string
 declare function get_data(size as byte) as string
@@ -75,20 +78,26 @@ declare function http_get_domain_name(url as string) as string
 declare sub http_proc_data()
 declare sub get_http_headers()
 declare sub http_init_request_socket(interface as pl_sock_interfaces, txbuffrq as byte, rxbuffrq as byte)
-declare sub on_http_headers_complete()
+declare sub callback_http_headers_complete()
 declare sub http_debugprint(s as string) 
-declare sub on_http_content_arrival(data as string)
-declare sub on_http_reponse_code_arrival(http_response as string)
+declare sub callback_http_content_arrival(data as string)
+declare sub callback_http_reponse_code_arrival(http_response as string)
 declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
-declare sub on_http_header_arrival(header_type as string, header_value as string)
+declare sub callback_http_header_arrival(header_type as string, header_value as string)
 declare sub http_generate_dns_lookup_list()
-declare sub http_generate_request_string(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string)
+declare sub http_generate_get_head_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, content_type as string)
+declare sub http_generate_post_request(byref url as string, method as HTTP_REQUEST_METHODS, data_length as dword, content_type as string)
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_dns_answer_ok()
 declare sub callback_dns_lookup_list_ok()
-declare sub http_dns_not_acquired(url as string)
+declare sub callback_http_dns_not_acquired(url as string)
 declare sub http_release_socket(index as byte)
 declare sub http_assign_free_index()
 declare sub http_dns_query()
-declare sub http_url_not_in_lookup_list(url as string)
-
+declare sub callback_http_url_not_in_lookup_list(url as string)
+declare sub callback_http_send_post_data(remaining_content_length as dword)
+declare function http_send_post_data(data as string) as byte
+declare function http_encode_url(unencoded_url as string) as string
+declare sub set_data(data as string)
+declare sub http_on_sock_data_sent()
+declare sub callback_http_post_data_sent_ok()
