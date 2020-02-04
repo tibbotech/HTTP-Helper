@@ -8,30 +8,15 @@ end sub
 
 sub on_button_pressed()
 
-'	http_post_request("http://httpbin.org/post", PL_SOCK_INTERFACE_NET,10000,"","","")
-'	http_get_request("http://192.168.1.71:3000", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("data 1/."),"","","")
-	http_get_request("http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"","","")
-'	http_get_request("http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"xxxxx"+http_encode_url("±")+"xxxx","","")
+'	http_request_short(HTTP_DELETE, "http://httpbin.org/delete", PL_SOCK_INTERFACE_NET,"","","","")
+'	http_request_short(HTTP_PUT, "http://httpbin.org/put?foo1=bar1&foo2=bar2", PL_SOCK_INTERFACE_NET,"foo2=bar2","","","")
 
-'	sock.setdata("name3=value3&name4=value4")
-'	sock.send
-'	http_get_request("http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"","","")
-	
-'	http_get_request("http://draxtechnologyonline.com/api/pim.php", PL_SOCK_INTERFACE_NET,"","","")
-'	http_get_request("http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
-'	http_get_request("http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
-'	http_get_request("http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
-'	http_get_request("https://192.168.1.170", PL_SOCK_INTERFACE_NET,"","","")
-	
+	http_request_long(HTTP_PUT, "http://httpbin.org/put?foo1=bar1&foo2=bar2", PL_SOCK_INTERFACE_NET,19,"","","")
+'	http_request_short(HTTP_PATCH, "http://httpbin.org/patch", PL_SOCK_INTERFACE_NET,"foo1=bar1&foo2=bar2","","","")
+'	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,19,"application/x-www-form-urlencoded","","")
+'	http_request_short(HTTP_GET, "http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"","","")
+
 end sub
-
-'sub on_button_pressed()
-
-	'Breaking
-'	http_get_request("https://192.168.1.170", PL_SOCK_INTERFACE_NET,"","","")
-'	http_get_request("http://httpbin.org:80/get", PL_SOCK_INTERFACE_NET,"name3=value3&name4=value4","","")
-	 
-'end sub
 
 sub on_sock_data_arrival()
 
@@ -51,31 +36,21 @@ dim pointer as dword
 dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
+'Sends post data
+
+'	if romfile_opened=false then
+'		romfile.open("sample_text.txt")
+'		romfile_opened=true
+'	end if
 	
-	if romfile_opened=false then
-		romfile.open("sample_text.txt")
-		romfile_opened=true
-	end if
-	
-	dim s as string=romfile.getdata(255)
+'	dim s as string=romfile.getdata(255)
+'	dim b as byte = http_send_post_data(s)
+'	pointer=pointer+b
+'	romfile.pointer32=pointer
+
+	dim s as string = "data="+http_encode_url("data 1/.")
 	dim b as byte = http_send_post_data(s)
-	pointer=pointer+b
-	romfile.pointer32=pointer
-'	s=romfile.getdata(255)
 
-'	while s<>""
-'		dim b as byte = http_send_post_data(s)
-'		pointer=pointer+b
-'		romfile.pointer32=pointer
-'		s=romfile.getdata(255)
-'	wend
-	
-'	http_send_post_data(s)
-'	http_send_post_data("parameter=value&also=another")
-'	http_send_post_data("Sample data of length 35 characters")
-
-'	sys.debugprint(str(remaining_content_length))
-	
 end sub
 
 sub callback_http_reponse_code_arrival(http_response as string)
@@ -86,15 +61,16 @@ sub callback_http_reponse_code_arrival(http_response as string)
 end sub 
 
 sub callback_http_header_arrival(header_type as string, header_value as string)
-	
-	sys.debugprint("Socket Number: " + str(sock.num)) 
+
 	sys.debugprint("Type: " + header_type)
 	sys.debugprint("\t\tValue: " + header_value +"\r\n")
-	
+
 end sub
 
 sub callback_http_headers_complete()
-	sys.debugprint("test\r\n")
+
+	sys.debugprint("Headers Complete\r\n")
+
 end sub
 
 sub callback_http_content_arrival(data as string)

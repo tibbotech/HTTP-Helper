@@ -35,15 +35,6 @@ enum reply_states
 
 end enum
 
-enum header_states
-
-	KEY,
-	ASSIGN,
-	COMPLETE,
-	ERROR
-
-end enum
-
 type dns_lookup
 
 	index as byte
@@ -66,8 +57,8 @@ type http_request
 	
 end type
 
-declare function http_get_request(byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-declare function http_post_request(byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+declare function http_request_short(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function get_http_content() as string
 declare function http_get_path(url as string) as string
 declare function get_data(size as byte) as string
@@ -75,6 +66,7 @@ declare function peek_data(size as byte) as string
 declare function http_check_socket_list() as byte
 declare function http_get_domain_name(url as string) as string
 
+declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
 declare sub http_proc_data()
 declare sub get_http_headers()
 declare sub http_init_request_socket(interface as pl_sock_interfaces, txbuffrq as byte, rxbuffrq as byte)
@@ -85,8 +77,6 @@ declare sub callback_http_reponse_code_arrival(http_response as string)
 declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 declare sub callback_http_header_arrival(header_type as string, header_value as string)
 declare sub http_generate_dns_lookup_list()
-declare sub http_generate_get_head_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, content_type as string)
-declare sub http_generate_post_request(byref url as string, method as HTTP_REQUEST_METHODS, data_length as dword, content_type as string)
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_dns_answer_ok()
 declare sub callback_dns_lookup_list_ok()

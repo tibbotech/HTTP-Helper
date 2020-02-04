@@ -217,55 +217,54 @@ sub http_lookup_url(url as string)
 
 end sub
 
-sub http_generate_get_head_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, content_type as string)
+sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
 
-	if content_type="" then
-		content_type="text/plain"
-	end if
-	
-	if len(data)>0 then 
-		http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a"
-	else
-		http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a"
-	end if
-		
-end sub
-
-sub http_generate_post_request(byref url as string, method as HTTP_REQUEST_METHODS, data_length as dword, content_type as string)
-		
 	if content_type="" then
 		content_type="text/plain"
 	end if
 	
 	http_request_list.method(http_request_list.index)=method
-	http_request_list.remaining_content_length(http_request_list.index)=data_length
-	http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(data_length) + "\x0d\x0a\x0d\x0a"
+	http_request_list.remaining_content_length(http_request_list.index)=request_length
+	
+	if long_request=true then
+		if method=HTTP_GET or method=HTTP_HEAD then
+			http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a" 
+		else	
+			http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(request_length) + "\x0d\x0a\x0d\x0a"
+		end if
+	else
+		if method=HTTP_GET or method=HTTP_HEAD then
+			http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a" + data
+		else	
+			http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(len(data)) + "\x0d\x0a\x0d\x0a" + data
+		end if
+	end if
 	
 end sub
 
+'Sends a HTTP request to the specified path on a specified domain name. 
 
+function http_request_short(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 
-'Sends a HTTP get request to the specified path on a specified domain name. 
-
-function http_get_request(byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 	
+
 	http_assign_free_index()
 	http_lookup_url(url)
-	http_generate_get_head_request(url, HTTP_GET, data, content_type)
+	http_generate_request(url, method, data, content_type, 0, false)
 	http_init_request_socket(interface, txbuffrq, rxbuffrq)
-	http_get_request=http_request_list.socket(http_request_list.index)
+	http_request_short=http_request_list.socket(http_request_list.index)
 	
 end function
 
-'Sends a HTTP get request to the specified path on a specified domain name. 
+'Sends a HTTP request to the specified path on a specified domain name. 
 
-function http_post_request(byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 	
 	http_assign_free_index()
 	http_lookup_url(url)
-	http_generate_post_request(url,HTTP_POST, request_length, content_type)
+	http_generate_request(url,method, "", content_type, request_length, true)
 	http_init_request_socket(interface, txbuffrq, rxbuffrq)
-	http_post_request=http_request_list.socket(http_request_list.index)
+	http_request_long=http_request_list.socket(http_request_list.index)
 	
 end function
 
@@ -372,16 +371,6 @@ function http_encode_url(unencoded_url as string) as string
 	
 end function
 
-'function http_encode_url(unencoded_url as string) as string
-	
-'	dim b as byte
-'	for b=0 to len(unencoded_url)
-'		dim ascii as byte=asc(unencoded_url)
-'		http_encode_url=hex(asc(unencoded_url))
-'	next b
-	
-'end function
-
 function peek_data(size as byte) as string
 	if http_request_list.ssl(http_request_list.index)=true then
 		peek_data=sock.tlspeekdata(size)
@@ -418,7 +407,7 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 		else	
 			set_data(http_request_list.request(http_request_list.index))
 			sock.send()
-			if http_request_list.method(http_request_list.index)=HTTP_POST and http_request_list.remaining_content_length(http_request_list.index)>0 then
+			if http_request_list.remaining_content_length(http_request_list.index)>0 then
 				callback_http_send_post_data(http_request_list.remaining_content_length(http_request_list.index))
 			end if
 		end if
@@ -475,4 +464,3 @@ sub http_generate_dns_lookup_list()
 	http_dns_query()
 
 end sub
-

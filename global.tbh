@@ -9,7 +9,7 @@
 #define WLN_DO PL_IO_NUM_50
 #define WLN_RST PL_IO_NUM_51
 
-#define HTTP_DNS_URLS "http://httpbin.org/post,http://draxtechnologyonline.com/api/pim.php,http://www.wikipedia.org:80,http://httpbin.org/get,http://192.168.1.71:3000,http://httpbin.org:443/get,http://httpbin.org:80/get,http://www.facebook.com,http://www.yahoo.com"
+#define HTTP_DNS_URLS "http://httpbin.org/post,http://httpbin.org/patch,http://httpbin.org/get,http://httpbin.org/put,http://httpbin.org/delete,http://httpbin.org/put?foo1=bar1&foo2=bar2"
 #define HTTP_NUM_OF_URLS 8
 #define HTTP_NUM_OF_REQS 8
 #define HTTP_MAX_URL_LEN 255
