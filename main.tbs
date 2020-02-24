@@ -3,18 +3,14 @@ include "global.tbh"
 sub on_sys_init()
 
 	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
+	dns_start(sock_get("DNS"))
 
 end sub
 
 sub on_button_pressed()
 
-'	http_request_short(HTTP_DELETE, "http://httpbin.org/delete", PL_SOCK_INTERFACE_NET,"","","","")
-'	http_request_short(HTTP_PUT, "http://httpbin.org/put?foo1=bar1&foo2=bar2", PL_SOCK_INTERFACE_NET,"foo2=bar2","","","")
-
-	http_request_long(HTTP_PUT, "http://httpbin.org/put?foo1=bar1&foo2=bar2", PL_SOCK_INTERFACE_NET,19,"","","")
-'	http_request_short(HTTP_PATCH, "http://httpbin.org/patch", PL_SOCK_INTERFACE_NET,"foo1=bar1&foo2=bar2","","","")
-'	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,19,"application/x-www-form-urlencoded","","")
-'	http_request_short(HTTP_GET, "http://httpbin.org/get", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"","","")
+'	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
 
 end sub
 
@@ -30,23 +26,9 @@ sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock
 	
 	http_sock_state_update(newstatesimple)
 		
-end sub
-
-dim pointer as dword
-dim romfile_opened as boolean=false
+ end sub
 
 sub callback_http_send_post_data(remaining_content_length as dword)
-'Sends post data
-
-'	if romfile_opened=false then
-'		romfile.open("sample_text.txt")
-'		romfile_opened=true
-'	end if
-	
-'	dim s as string=romfile.getdata(255)
-'	dim b as byte = http_send_post_data(s)
-'	pointer=pointer+b
-'	romfile.pointer32=pointer
 
 	dim s as string = "data="+http_encode_url("data 1/.")
 	dim b as byte = http_send_post_data(s)
@@ -54,29 +36,15 @@ sub callback_http_send_post_data(remaining_content_length as dword)
 end sub
 
 sub callback_http_reponse_code_arrival(http_response as string)
-
-	sys.debugprint("Data received from data: " + str(sock.num) + "\r\n") 
-	sys.debugprint("Response: " + http_response +"\r\n")
-	
 end sub 
 
 sub callback_http_header_arrival(header_type as string, header_value as string)
-
-	sys.debugprint("Type: " + header_type)
-	sys.debugprint("\t\tValue: " + header_value +"\r\n")
-
 end sub
 
 sub callback_http_headers_complete()
-
-	sys.debugprint("Headers Complete\r\n")
-
 end sub
 
 sub callback_http_content_arrival(data as string)
-
-	http_debugprint(data)	
-	
 end sub
 
 sub on_sock_data_sent()
@@ -88,10 +56,8 @@ end sub
 sub callback_http_post_data_sent_ok()
 	
 	sys.debugprint("\r\nData sent ok\r\n")
-	romfile_opened=false	
 	
 end sub
-
 
 sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
@@ -99,22 +65,10 @@ sub callback_dns_answer_acquired(return_type as en_dns_return_type, byref return
 
 end sub
 
-sub callback_dns_lookup_list_ok()
-	
-	sys.debugprint("DNS Lookup List Generated\r\n")
-	
-end sub
+sub callback_dns_ok()
 
-sub callback_http_dns_not_acquired(url as string)
-	
-	sys.debugprint("DNS not acquired for URL: " + url + "\r\n")
-	
-end sub
+	http_dns_ok()
 
-sub callback_http_url_not_in_lookup_list(url as string)
-
-	sys.debugprint("URL not found in lookup list: " + url)
-	
 end sub
 
 sub on_sys_timer()
@@ -165,16 +119,9 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			wln.gatewayip=gateway_ip
 			wln.netmask=netmask
 		end if
-	end if
+	end if				
 	
-	http_generate_dns_lookup_list()
-				
 end sub
-
-sub callback_dns_ok()
-	http_dns_answer_ok()
-end sub
-
 
 sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)	
 end sub

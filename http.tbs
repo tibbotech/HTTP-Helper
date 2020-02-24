@@ -1,8 +1,27 @@
 include "global.tbh"
 
+dim http_start_called as boolean=false
 dim http_methods(6) as string(7) = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
-dim dns_lookup_list as dns_lookup
-dim http_request_list as http_request
+dim http_request_list as http_request_type
+
+sub http_start()
+
+	dim b as byte
+	for b=0 to HTTP_NUM_OF_REQS-1
+		http_request_list.state(b)=FREE
+	next b
+	
+end sub
+
+sub http_stop()
+	
+	dim b as byte
+	for b=0 to HTTP_NUM_OF_REQS-1
+		http_request_list.state(b)=FREE
+		http_release_socket(http_request_list.socket(b))
+	next b	
+	
+end sub
 
 sub http_proc_data()
 	
@@ -32,6 +51,7 @@ sub get_http_headers()
 				dim b2 as byte=instr(1,http_reply," ",2)
 				http_reply=mid(http_reply,b1+1,b2-b1-1)
 				callback_http_reponse_code_arrival(http_reply)
+				http_debugprint("HTTP Response Code Arrival> Reply: " + http_reply)
 				http_request_list.state(http_request_list.index)=HTTP_RESPONSE_PROCESSED
 				http_reply=""
 			else if http_request_list.state(http_request_list.index)=HTTP_RESPONSE_PROCESSED then
@@ -39,6 +59,7 @@ sub get_http_headers()
 				dim b as byte= instr(1,http_reply,": ",1)
 				if b=0 then
 					callback_http_headers_complete()
+					http_debugprint("HTTP Headers Complete")
 					http_request_list.state(http_request_list.index)=HTTP_HEADERS_PROCESSED
 					exit while
 				end if
@@ -46,6 +67,7 @@ sub get_http_headers()
 				header_value=right(http_reply,len(http_reply)-b-1)
 				header_value=left(header_value,len(header_value)-1)
 				callback_http_header_arrival(header_type,header_value)
+				http_debugprint("HTTP Header Arrival> Type: " + header_type + "\t\tValue: " + header_value)
 				if header_type="Content-Length" then
 					http_request_list.remaining_header_length(http_request_list.index)=val(header_value)
 				end if
@@ -70,6 +92,7 @@ function get_http_content() as string
 		http_release_socket(http_request_list.socket(http_request_list.index))
 	end if	
 	callback_http_content_arrival(data)
+	http_debugprint("HTTP Content Arrival> " + data)
 	
 end function
 
@@ -80,13 +103,11 @@ sub http_release_socket(index as byte)
 	
 end sub
 
-sub http_dns_query()
+sub http_dns_query(url as string)
 	
 	dim is_ip_address as boolean=true
 	dim b as byte
-	dim url as string
-	while is_ip_address=true and dns_lookup_list.index<HTTP_NUM_OF_URLS
-		url = http_get_domain_name(dns_lookup_list.url(dns_lookup_list.index))
+	while is_ip_address=true 
 		for b=1 to len(url)
 			dim s as string=mid(url,b,1)
 			dim ascii as word=asc(s)
@@ -98,17 +119,15 @@ sub http_dns_query()
 		next b
 		
 		if is_ip_address=true then
-			dns_lookup_list.ip(dns_lookup_list.index)=url
-			dns_lookup_list.index=dns_lookup_list.index+1
+			http_request_list.ip(http_request_list.index)=url
 		end if
 	wend
 	
-	if dns_lookup_list.index<HTTP_NUM_OF_URLS then
-		dns_query(url)
-	else
-		callback_dns_lookup_list_ok()
-	end if
-			
+	dns_query(http_get_domain_name(url))
+	
+	
+	http_request_list.state(http_request_list.index)=DNS_REQUEST_SENT
+		
 end sub
 
 'Returns the domain name section of a given URL
@@ -151,35 +170,27 @@ function http_get_path(url as string) as string
 		
 end function
 
-sub http_init_request_socket(interface as pl_sock_interfaces, txbuffrq as byte, rxbuffrq as byte)
+sub http_init_request_socket()
 
-	if len(dns_lookup_list.ip(dns_lookup_list.index))=0 then
-		callback_http_dns_not_acquired(dns_lookup_list.url(dns_lookup_list.index))
+	if http_request_list.txbuffrq(http_request_list.index) = 0 then
+		http_request_list.txbuffrq(http_request_list.index) = 2
 	end if
 	
-	if http_request_list.socket(http_request_list.index)=0 then
-		http_request_list.socket(http_request_list.index)=sock_get("REQ"+str(dns_lookup_list.index))
-	end if
-	
-	if txbuffrq = 0 then
-		txbuffrq = 2
-	end if
-	
-	if rxbuffrq = 0 then
-		rxbuffrq = 2
+	if http_request_list.rxbuffrq(http_request_list.index) = 0 then
+		http_request_list.rxbuffrq(http_request_list.index) = 2
 	end if 
 	
 	sock.num=http_request_list.socket(http_request_list.index)
-	sock.targetip=dns_lookup_list.ip(dns_lookup_list.index)
+	sock.targetip=http_request_list.ip(http_request_list.index)
 	sock.protocol=PL_SOCK_PROTOCOL_TCP
 	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
 	sock.targetport=http_request_list.port(http_request_list.index)
-	sock.targetinterface=interface
-	dim w1, w2 as word
-	w1=sock.txbuffrq(txbuffrq)
-	w2=sock.rxbuffrq(rxbuffrq)
+	sock.targetinterface=http_request_list.interface(http_request_list.index)
+	sock.txbuffrq(http_request_list.txbuffrq(http_request_list.index))
+	sock.rxbuffrq(http_request_list.rxbuffrq(http_request_list.index))
 	sys.buffalloc()
 	 
+	#if SSL 
 	if http_request_list.ssl(http_request_list.index)=true then
 		sock.tlsdeinit()
 		sock.tlsbuffrq(70)
@@ -188,24 +199,18 @@ sub http_init_request_socket(interface as pl_sock_interfaces, txbuffrq as byte, 
 		sock.rxclear()
 		sock.txclear()
 	end if
+	#endif
 	
 	sock.connect()
 
 end sub
 
-sub http_lookup_url(url as string)
-	
-	dim url_found as boolean=false
-	for dns_lookup_list.index=0 to HTTP_NUM_OF_URLS-1
-		if dns_lookup_list.url(dns_lookup_list.index)=url then
-			url_found=true
-			exit for
-		end if
-	next dns_lookup_list.index
-	
-	if url_found=false then
-		callback_http_url_not_in_lookup_list(url)
-	end if
+sub http_get_ip(url as string)
+
+	http_request_list.dns_request_in_progress=true
+	dns_connect(PL_SOCK_INTERFACE_NET, "8.8.4.4", 0)
+
+	http_dns_query(url)
 	
 	if left(url, 5)="https" then
 		http_request_list.ssl(http_request_list.index)=true
@@ -223,6 +228,8 @@ sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, b
 		content_type="text/plain"
 	end if
 	
+	http_request_list.socket(http_request_list.index)=sock_get("HTTP"+str(http_request_list.index))
+	http_request_list.url(http_request_list.index)=url
 	http_request_list.method(http_request_list.index)=method
 	http_request_list.remaining_content_length(http_request_list.index)=request_length
 	
@@ -239,73 +246,128 @@ sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, b
 			http_request_list.request(http_request_list.index)=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(len(data)) + "\x0d\x0a\x0d\x0a" + data
 		end if
 	end if
-	
+		
 end sub
 
-'Sends a HTTP request to the specified path on a specified domain name. 
-
-function http_request_short(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-
+function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string) as byte
 	
+	http_request=http_request_with_buffers(method,url,interface,data,content_type,2,2)
+	
+end function
 
+
+
+function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+'Sends an HTTP request of a maximum length of 255 bytes
+
+	if http_start_called=false then
+		http_start()
+		http_start_called=true
+	end if
 	http_assign_free_index()
-	http_lookup_url(url)
 	http_generate_request(url, method, data, content_type, 0, false)
-	http_init_request_socket(interface, txbuffrq, rxbuffrq)
-	http_request_short=http_request_list.socket(http_request_list.index)
+	http_request_with_buffers=http_request_list.socket(http_request_list.index)
+	http_request_list.interface(http_request_list.index)=interface
+	http_request_list.txbuffrq(http_request_list.index)=txbuffrq
+	http_request_list.rxbuffrq(http_request_list.index)=rxbuffrq
+	
+	if http_request_list.dns_request_in_progress=false then
+		http_get_ip(url)
+	end if
 	
 end function
 
 'Sends a HTTP request to the specified path on a specified domain name. 
 
-function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string) as byte
+	
+	http_request_long=http_request_long_with_buffers(method,url,interface,request_length,content_type,2,2)
+	
+end function
+
+'Sends a HTTP request to the specified path on a specified domain name. 
+
+function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 	
 	http_assign_free_index()
-	http_lookup_url(url)
 	http_generate_request(url,method, "", content_type, request_length, true)
-	http_init_request_socket(interface, txbuffrq, rxbuffrq)
-	http_request_long=http_request_list.socket(http_request_list.index)
+	http_request_long_with_buffers=http_request_list.socket(http_request_list.index)
+	http_request_list.interface(http_request_list.index)=interface
+	http_request_list.txbuffrq(http_request_list.index)=txbuffrq
+	http_request_list.rxbuffrq(http_request_list.index)=rxbuffrq
+	
+	if http_request_list.dns_request_in_progress=false then
+		http_get_ip(url)
+	end if
+	
 	
 end function
 
 sub http_assign_free_index()
 
 	dim b as byte
-	for b=0 to HTTP_NUM_OF_URLS-1
+	for b=0 to HTTP_NUM_OF_REQS-1
 		if http_request_list.state(b)=FREE then
 			 http_request_list.index=b
-			 http_request_list.state(b)=REQUEST_NOT_SENT
+			 http_request_list.state(b)=DNS_NOT_COMPLETE
 			 exit sub
 		end if		
 	next b	
-	
+
 end sub
 
 sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
 	if(return_type=EN_DNS_RET_IP) then
-		dns_lookup_list.ip(dns_lookup_list.index)=ddstr(return_string)
+		http_check_list_for_dns_sent()
+		http_request_list.ip(http_request_list.index)=ddstr(return_string)
 	end if
 	
 end sub
 
-sub http_dns_answer_ok()
+function http_check_list_for_dns_sent() as byte
+	
+	http_check_list_for_dns_sent=255
+	dim b as byte
+	for b=0 to HTTP_NUM_OF_REQS-1
+		if http_request_list.state(b)=DNS_REQUEST_SENT then
+			http_check_list_for_dns_sent=b
+			http_request_list.index=b
+			exit for
+		end if
+	next b
+	
+end function
 
-	dns_lookup_list.index=dns_lookup_list.index+1
-	if dns_lookup_list.index<HTTP_NUM_OF_URLS then
-		http_dns_query()
-	else
-		callback_dns_lookup_list_ok()
-	end if
+sub http_dns_ok()
+	
+	http_check_list_for_dns_sent()
+	http_request_list.dns_request_in_progress=false
+	http_request_list.state(http_request_list.index)=DNS_COMPLETE
+	http_init_request_socket()
+	http_check_dns_queue()
+
+end sub
+
+sub http_check_dns_queue()
+
+	dim b as byte
+	for b=0 to HTTP_NUM_OF_REQS-1
+		if http_request_list.state(b)=DNS_NOT_COMPLETE then
+			http_request_list.index=b
+			http_get_ip(http_request_list.url(b))
+			exit sub
+		end if		
+	next b	
 	
 end sub
 
-sub http_debugprint(s as string)
+sub http_debugprint(byref print_data as string)
 	
 	#if HTTP_DEBUG_PRINT 
-		sys.debugprint(s)
+		sys.debugprint(HTTP_STAMP+print_data+HTTP_CR_LF)
 	#endif
-	
+
 end sub
 
 
@@ -335,7 +397,9 @@ end function
 
 sub set_data(data as string)
 	if http_request_list.ssl(http_request_list.index)=true then
-		sock.tlssetdata(data)
+		#if SSL
+			sock.tlssetdata(data)
+		#endif
 	else
 		sock.setdata(data)
 	end if
@@ -343,7 +407,9 @@ end sub
 
 function get_data(size as byte) as string
 	if http_request_list.ssl(http_request_list.index)=true then
-		get_data=sock.tlsgetdata(size)
+		#if SSL
+			get_data=sock.tlsgetdata(size)
+		#endif
 	else
 		get_data=sock.getdata(size)
 	end if
@@ -371,19 +437,11 @@ function http_encode_url(unencoded_url as string) as string
 	
 end function
 
-function peek_data(size as byte) as string
-	if http_request_list.ssl(http_request_list.index)=true then
-		peek_data=sock.tlspeekdata(size)
-	else
-		peek_data=sock.peekdata(size)
-	end if
-end function
-
 function http_check_socket_list() as byte
 	
 	http_check_socket_list=255
 	dim b as byte
-	for b=0 to HTTP_NUM_OF_URLS-1
+	for b=0 to HTTP_NUM_OF_REQS-1
 		if http_request_list.socket(b)=sock.num and sock.num<>0 then
 			http_check_socket_list=b
 			http_request_list.index=b
@@ -398,12 +456,22 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_check_socket_list()=255 then
 		exit sub
 	end if
+
+	if http_request_list.state(http_request_list.index)=DNS_NOT_COMPLETE then
+		exit sub
+	end if
+
+	if http_check_socket_list()=255 then
+		exit sub
+	end if
 	
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
 	else
 		if http_request_list.ssl(http_request_list.index)=true then
-			sock.tlshandshake()   
+			#if SSL
+				sock.tlshandshake()   
+			#endif
 		else	
 			set_data(http_request_list.request(http_request_list.index))
 			sock.send()
@@ -413,14 +481,15 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 		end if
 	end if
 	
-	'if sock state is closed then handshake failed
-	if sock.state=PL_TLS_EST then
-		set_data(http_request_list.request(http_request_list.index))
-		sock.send()
-		if http_request_list.method(http_request_list.index)=HTTP_POST and http_request_list.remaining_content_length(http_request_list.index)>0 then
-			callback_http_send_post_data(http_request_list.remaining_content_length(http_request_list.index))
-		end if
-	end	if
+	#if SSL
+		if sock.state=PL_TLS_EST then
+			set_data(http_request_list.request(http_request_list.index))
+			sock.send()
+			if http_request_list.method(http_request_list.index)=HTTP_POST and http_request_list.remaining_content_length(http_request_list.index)>0 then
+				callback_http_send_post_data(http_request_list.remaining_content_length(http_request_list.index))
+			end if
+		end	if
+	#endif
 	
 	http_request_list.state(http_request_list.index)=REQUEST_SENT	
 	
@@ -436,31 +505,7 @@ sub http_on_sock_data_sent()
 		callback_http_send_post_data(http_request_list.remaining_content_length(http_request_list.index))
 	else
 		callback_http_post_data_sent_ok()
+		http_debugprint("HTTP Post Data Sent")
 	end if
 	
-end sub
-
-
-sub split_to_array(original_string as string, delimiter as string)
-	
-	dim pos, b as byte
-	for b=0 to HTTP_NUM_OF_URLS-1
-		pos=instr(1,original_string,delimiter,1)
-		dns_lookup_list.url(b)=left(original_string,pos-1)
-		original_string=right(original_string,len(original_string)-pos)
-	next b
-	
-end sub
-
-sub http_generate_dns_lookup_list()
-
-	dim dns_sock as byte
-	dns_lookup_list.index=0
-	dns_sock=sock_get("DNS")
-	sock.num=dns_sock 
-	dns_start(dns_sock)
-	dns_connect(PL_SOCK_INTERFACE_NET, "8.8.4.4", 0)
-	split_to_array(HTTP_DNS_URLS,",")
-	http_dns_query()
-
 end sub
