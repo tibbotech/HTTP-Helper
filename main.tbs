@@ -9,8 +9,7 @@ end sub
 
 sub on_button_pressed()
 
-'	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
-	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
 
 end sub
 

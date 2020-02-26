@@ -38,6 +38,7 @@ type http_request_type
 	dns_request_in_progress as boolean
 	state(HTTP_NUM_OF_REQS) as reply_states
 	url(HTTP_NUM_OF_REQS) as string
+	domain_name(HTTP_NUM_OF_REQS) as string
 	socket(HTTP_NUM_OF_REQS) as byte
 	port(HTTP_NUM_OF_REQS) as word 
 	ip(HTTP_NUM_OF_REQS) as string(15)
