@@ -464,10 +464,6 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_request_list.state(http_request_list.index)=DNS_NOT_COMPLETE then
 		exit sub
 	end if
-
-	if http_check_socket_list()=255 then
-		exit sub
-	end if
 	
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
