@@ -34,7 +34,7 @@ sub callback_http_send_post_data(remaining_content_length as dword)
 
 end sub
 
-sub callback_http_reponse_code_arrival(http_response as string)
+sub callback_http_response_code_arrival(http_response as string)
 end sub 
 
 sub callback_http_header_arrival(header_type as string, header_value as string)

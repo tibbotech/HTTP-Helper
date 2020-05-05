@@ -50,7 +50,7 @@ sub get_http_headers()
 				dim b1 as byte=instr(1,http_reply," ",1)
 				dim b2 as byte=instr(1,http_reply," ",2)
 				http_reply=mid(http_reply,b1+1,b2-b1-1)
-				callback_http_reponse_code_arrival(http_reply)
+				callback_http_response_code_arrival(http_reply)
 				http_debugprint("HTTP Response Code Arrival> Reply: " + http_reply)
 				http_request_list.state(http_request_list.index)=HTTP_RESPONSE_PROCESSED
 				http_reply=""
@@ -293,6 +293,10 @@ end function
 
 function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 	
+	if http_start_called=false then
+		http_start()
+		http_start_called=true
+	end if
 	http_assign_free_index()
 	http_generate_request(url,method, "", content_type, request_length, true)
 	http_request_long_with_buffers=http_request_list.socket(http_request_list.index)
