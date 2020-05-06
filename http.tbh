@@ -65,6 +65,7 @@ declare function http_check_socket_list() as byte
 declare function http_get_domain_name(url as string) as string
 declare function http_send_post_data(data as string) as byte
 declare function http_encode_url(unencoded_url as string) as string
+declare function http_assign_free_index() as ok_ng
 
 declare sub http_start()
 declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
@@ -80,7 +81,6 @@ declare sub callback_http_header_arrival(header_type as string, header_value as 
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_dns_ok()
 declare sub http_release_socket(index as byte)
-declare sub http_assign_free_index()
 declare sub http_dns_query(url as string)
 declare sub callback_http_send_post_data(remaining_content_length as dword)
 declare sub set_data(data as string)
