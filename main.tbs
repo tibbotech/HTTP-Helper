@@ -92,7 +92,7 @@ end sub
 
 sub callback_wln_ok()
 
-	dhcp_start(PL_SOCK_INTERFACE_WLN,"","")
+	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 		
 end sub
 
