@@ -130,7 +130,7 @@ sub http_dns_query(url as string)
 	wend
 	
 	http_request_list.dns_request_in_progress=true
-	dns_connect(PL_SOCK_INTERFACE_NET, "8.8.4.4", 0)
+	dns_connect(http_request_list.interface(http_request_list.index), "8.8.4.4", 0)
 	dns_query(http_get_domain_name(url))
 	http_request_list.state(http_request_list.index)=DNS_REQUEST_SENT
 		
