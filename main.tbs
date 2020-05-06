@@ -2,14 +2,14 @@ include "global.tbh"
 
 sub on_sys_init()
 
-	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
+	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 	dns_start(sock_get("DNS"))
 
 end sub
 
 sub on_button_pressed()
 
-	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_POST, "http://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
 
 end sub
 
