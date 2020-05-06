@@ -88,12 +88,13 @@ function get_http_content() as string
 	
 	dim data as string=get_data(255)
 	http_request_list.remaining_header_length(http_request_list.index)=http_request_list.remaining_header_length(http_request_list.index)-len(data)
-	if http_request_list.remaining_header_length(http_request_list.index)=0 then
-		http_release_socket(http_request_list.socket(http_request_list.index))
-	end if	
 	callback_http_content_arrival(data)
 	http_debugprint("HTTP Content Arrival> " + data)
-	
+		if http_request_list.remaining_header_length(http_request_list.index)=0 then
+		callback_http_request_complete()
+		http_release_socket(http_request_list.socket(http_request_list.index))
+	end if	
+
 end function
 
 sub http_release_socket(index as byte)

@@ -122,6 +122,9 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 	
 end sub
 
+sub callback_http_request_complete()
+end sub
+
 sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)	
 end sub
 
