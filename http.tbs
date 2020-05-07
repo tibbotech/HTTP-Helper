@@ -51,7 +51,7 @@ sub get_http_headers()
 				dim b2 as byte=instr(1,http_reply," ",2)
 				http_reply=mid(http_reply,b1+1,b2-b1-1)
 				callback_http_response_code_arrival(http_reply)
-				http_debugprint("HTTP Response Code Arrival> Reply: " + http_reply)
+				http_debugprint("HTTP Response Code Arrival> Reply: ", http_reply)
 				http_request_list.state(http_request_list.index)=HTTP_RESPONSE_PROCESSED
 				http_reply=""
 			else if http_request_list.state(http_request_list.index)=HTTP_RESPONSE_PROCESSED then
@@ -59,7 +59,7 @@ sub get_http_headers()
 				dim b as byte= instr(1,http_reply,": ",1)
 				if b=0 then
 					callback_http_headers_complete()
-					http_debugprint("HTTP Headers Complete")
+					http_debugprint("HTTP Headers Complete", "")
 					http_request_list.state(http_request_list.index)=HTTP_HEADERS_PROCESSED
 					exit while
 				end if
@@ -67,7 +67,7 @@ sub get_http_headers()
 				header_value=right(http_reply,len(http_reply)-b-1)
 				header_value=left(header_value,len(header_value)-1)
 				callback_http_header_arrival(header_type,header_value)
-				http_debugprint("HTTP Header Arrival> Type: " + header_type + "\t\tValue: " + header_value)
+				http_debugprint("HTTP Header Arrival> Type: ",header_type + "\t\tValue: " + header_value)
 				if header_type="Content-Length" then
 					http_request_list.remaining_header_length(http_request_list.index)=val(header_value)
 				end if
@@ -89,8 +89,8 @@ function get_http_content() as string
 	dim data as string=get_data(255)
 	http_request_list.remaining_header_length(http_request_list.index)=http_request_list.remaining_header_length(http_request_list.index)-len(data)
 	callback_http_content_arrival(data)
-	http_debugprint("HTTP Content Arrival> " + data)
-		if http_request_list.remaining_header_length(http_request_list.index)=0 then
+	http_debugprint("HTTP Content Arrival> ", data)
+	if http_request_list.remaining_header_length(http_request_list.index)=0 or http_request_list.method(http_request_list.index)=HTTP_HEAD then
 		callback_http_request_complete()
 		http_release_socket(http_request_list.socket(http_request_list.index))
 	end if	
@@ -380,10 +380,13 @@ sub http_check_dns_queue()
 	
 end sub
 
-sub http_debugprint(byref print_data as string)
+ sub http_debugprint(byref print_type as string, byref print_data as string) 
 	
 	#if HTTP_DEBUG_PRINT 
-		sys.debugprint(HTTP_STAMP+print_data+HTTP_CR_LF)
+		sys.debugprint(HTTP_STAMP)
+		sys.debugprint(print_type)
+		sys.debugprint(print_data)
+		sys.debugprint(HTTP_CR_LF)
 	#endif
 
 end sub
@@ -519,7 +522,7 @@ sub http_on_sock_data_sent()
 		callback_http_send_post_data(http_request_list.remaining_content_length(http_request_list.index))
 	else
 		callback_http_post_data_sent_ok()
-		http_debugprint("HTTP Post Data Sent")
+		http_debugprint("HTTP Post Data Sent","")
 	end if
 	
 end sub
