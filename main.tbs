@@ -9,7 +9,7 @@ end sub
 
 sub on_button_pressed()
 
-	http_request(HTTP_POST, "http://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_GET, "http://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
 
 end sub
 
@@ -28,10 +28,6 @@ sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock
  end sub
 
 sub callback_http_send_post_data(remaining_content_length as dword)
-
-	dim s as string = "data="+http_encode_url("data 1/.")
-	dim b as byte = http_send_post_data(s)
-
 end sub
 
 sub callback_http_response_code_arrival(http_response as string)
