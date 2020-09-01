@@ -3,14 +3,14 @@ const DEVICE_TOKEN = "EOIop9eFQjZrHWER3NIf"
 
 sub on_sys_init()
 
-	dhcp_start(PL_SOCK_INTERFACE_NET,"","")
+	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 	dns_start(sock_get("DNS"))
 
 end sub
 
 sub on_button_pressed()
 
-	http_request(HTTP_POST, "http://192.168.1.48:8080/api/v1/"+DEVICE_TOKEN+"/telemetry", PL_SOCK_INTERFACE_NET,"{'key1':'value1'}","application/json")
+	http_request(HTTP_GET, "http://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
 
 end sub
 
@@ -33,18 +33,6 @@ dim pointer as dword
 dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
-
-	if romfile_opened=false then
-		romfile.open("sample_text.txt")
-		romfile_opened=true
-	end if
-
-	dim s as string=romfile.getdata(255)
-	dim b as byte = http_send_post_data(s)
-	pointer=pointer+b
-	romfile.pointer32=pointer
-	
-
 end sub
 
 sub callback_http_response_code_arrival(http_response as string)
@@ -105,7 +93,7 @@ end sub
 
 sub callback_wln_ok()
 
-	dhcp_start(PL_SOCK_INTERFACE_WLN,"","")
+	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 		
 end sub
 
@@ -133,6 +121,9 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 		end if
 	end if				
 	
+end sub
+
+sub callback_http_request_complete()
 end sub
 
 sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)	
