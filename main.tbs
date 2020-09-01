@@ -1,4 +1,5 @@
 include "global.tbh"
+const DEVICE_TOKEN = "EOIop9eFQjZrHWER3NIf"
 
 sub on_sys_init()
 
@@ -9,7 +10,7 @@ end sub
 
 sub on_button_pressed()
 
-	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_POST, "http://192.168.1.48:8080/api/v1/"+DEVICE_TOKEN+"/telemetry", PL_SOCK_INTERFACE_NET,"{'key1':'value1'}","application/json")
 
 end sub
 
@@ -25,12 +26,24 @@ sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock
 	
 	http_sock_state_update(newstatesimple)
 		
- end sub
+end sub
+
+
+dim pointer as dword
+dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
 
-	dim s as string = "data="+http_encode_url("data 1/.")
+	if romfile_opened=false then
+		romfile.open("sample_text.txt")
+		romfile_opened=true
+	end if
+
+	dim s as string=romfile.getdata(255)
 	dim b as byte = http_send_post_data(s)
+	pointer=pointer+b
+	romfile.pointer32=pointer
+	
 
 end sub
 

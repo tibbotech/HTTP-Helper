@@ -65,6 +65,7 @@ declare function http_check_socket_list() as byte
 declare function http_get_domain_name(url as string) as string
 declare function http_send_post_data(data as string) as byte
 declare function http_encode_url(unencoded_url as string) as string
+declare function http_get_port(url as string) as word
 
 declare sub http_start()
 declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
