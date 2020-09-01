@@ -94,7 +94,7 @@ function get_http_content() as string
 		callback_http_request_complete()
 		http_release_socket(http_request_list.socket(http_request_list.index))
 	end if	
-
+	
 end function
 
 sub http_release_socket(index as byte)
@@ -212,20 +212,45 @@ sub http_init_request_socket()
 
 end sub
 
-sub http_get_ip(url as string)
+sub http_get_ip_and_port(url as string)
 
+	dim port as word = http_get_port(url)
 	if left(url, 5)="https" then
 		http_request_list.ssl(http_request_list.index)=true
-		http_request_list.port(http_request_list.index)=443
+		if port=0 then
+			http_request_list.port(http_request_list.index)=443
+		else
+			http_request_list.port(http_request_list.index)=port
+		end if
 	else
 		http_request_list.ssl(http_request_list.index)=false
-		http_request_list.port(http_request_list.index)=80
+		if port=0 then
+			http_request_list.port(http_request_list.index)=80
+		else
+			http_request_list.port(http_request_list.index)=port
+		end if
 	end if
 
 	http_dns_query(http_request_list.domain_name(http_request_list.index))
 	
 
 end sub
+
+function http_get_port(url as string) as word
+
+	dim port_segment as string
+	dim b as byte=instr(1,url,":",2)
+	if b>0 then
+		http_get_port=right(url,len(url)-b)
+		b=instr(1,port_segment,"/",1)
+		if b>0 then
+			http_get_port=left(port_segment,b-1)
+		end if
+	else 
+		http_get_port=0
+	end if
+		
+end function
 
 sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
 
@@ -280,7 +305,7 @@ function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as 
 	http_request_list.rxbuffrq(http_request_list.index)=rxbuffrq
 	
 	if http_request_list.dns_request_in_progress=false then
-		http_get_ip(url)
+		http_get_ip_and_port(url)
 	end if
 	
 end function
@@ -312,7 +337,7 @@ function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref ur
 	http_request_list.rxbuffrq(http_request_list.index)=rxbuffrq
 	
 	if http_request_list.dns_request_in_progress=false then
-		http_get_ip(url)
+		http_get_ip_and_port(url)
 	end if
 	
 	
@@ -373,7 +398,7 @@ sub http_check_dns_queue()
 	for b=0 to HTTP_NUM_OF_REQS-1
 		if http_request_list.state(b)=DNS_NOT_COMPLETE then
 			http_request_list.index=b
-			http_get_ip(http_request_list.url(b))
+			http_get_ip_and_port(http_request_list.url(b))
 			exit sub
 		end if		
 	next b	
