@@ -69,7 +69,6 @@ declare function http_get_port(url as string) as word
 declare function http_assign_free_index() as ok_ng
 declare sub http_start()
 declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
-declare sub callback_http_request_complete()
 declare sub http_proc_data()
 declare sub get_http_headers()
 declare sub http_init_request_socket()

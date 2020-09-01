@@ -1,4 +1,5 @@
 include "global.tbh"
+const DEVICE_TOKEN = "EOIop9eFQjZrHWER3NIf"
 
 sub on_sys_init()
 
@@ -25,7 +26,11 @@ sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock
 	
 	http_sock_state_update(newstatesimple)
 		
- end sub
+end sub
+
+
+dim pointer as dword
+dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
 end sub
