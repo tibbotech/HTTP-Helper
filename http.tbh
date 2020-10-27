@@ -6,6 +6,10 @@
 	#define HTTP_MAX_REQ_LEN 255
 #endif
 
+#ifndef HTTP_DNS_SERVER
+#define HTTP_DNS_SERVER "8.8.8.8"
+#endif
+
 const HTTP_STAMP="HTTP> "
 const HTTP_CR_LF=chr(13)+chr(10)
 
@@ -28,28 +32,29 @@ enum reply_states
 	DNS_COMPLETE,
 	REQUEST_SENT,
 	HTTP_RESPONSE_PROCESSED,
-	HTTP_HEADERS_PROCESSED
+	HTTP_HEADERS_PROCESSED,
+	REQUEST_COMPLETE
 
 end enum
 
 type http_request_type
 
-	index as byte
 	dns_request_in_progress as boolean
-	state(HTTP_NUM_OF_REQS) as reply_states
-	url(HTTP_NUM_OF_REQS) as string
-	domain_name(HTTP_NUM_OF_REQS) as string
-	socket(HTTP_NUM_OF_REQS) as byte
-	port(HTTP_NUM_OF_REQS) as word 
-	ip(HTTP_NUM_OF_REQS) as string(15)
-	ssl(HTTP_NUM_OF_REQS) as boolean
-	request(HTTP_NUM_OF_REQS) as string(HTTP_MAX_REQ_LEN)
-	remaining_header_length(HTTP_NUM_OF_REQS) as word
-	remaining_content_length(HTTP_NUM_OF_REQS) as dword
-	method(HTTP_NUM_OF_REQS) as HTTP_REQUEST_METHODS
-	interface(HTTP_NUM_OF_REQS) as pl_sock_interfaces
-	txbuffrq(HTTP_NUM_OF_REQS) as byte
-	rxbuffrq(HTTP_NUM_OF_REQS) as byte
+	http_request_in_progress as boolean
+	state as reply_states
+	url as string
+	domain_name as string
+	socket as byte
+	port as word 
+	ip as string(15)
+	ssl as boolean
+	request as string(HTTP_MAX_REQ_LEN)
+	remaining_header_length as word
+	remaining_content_length as dword
+	method as HTTP_REQUEST_METHODS
+	interface as pl_sock_interfaces
+	txbuffrq as byte
+	rxbuffrq as byte
 	
 end type
 
@@ -57,16 +62,14 @@ declare function http_request(method as HTTP_REQUEST_METHODS, byref url as strin
 declare function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string) as byte
 declare function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-declare function http_check_list_for_dns_sent() as byte
 declare function get_http_content() as string
 declare function http_get_path(url as string) as string
 declare function get_data(size as byte) as string
-declare function http_check_socket_list() as byte
+declare function http_check_socket_list() as ok_ng
 declare function http_get_domain_name(url as string) as string
 declare function http_send_post_data(data as string) as byte
 declare function http_encode_url(unencoded_url as string) as string
 declare function http_get_port(url as string) as word
-declare function http_assign_free_index() as ok_ng
 declare sub http_start()
 declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
 declare sub http_debugprint(byref print_type as string, byref print_data as string) 
@@ -90,3 +93,7 @@ declare sub callback_http_post_data_sent_ok()
 declare sub http_check_dns_queue()
 declare sub http_stop()
 declare sub callback_http_request_complete()
+declare sub callback_http_open_romfile()
+declare sub callback_http_request_failed(error_message as string)
+declare sub http_dns_failure()
+declare sub http_proc_timer()

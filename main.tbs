@@ -2,16 +2,26 @@ include "global.tbh"
 const DEVICE_TOKEN = "EOIop9eFQjZrHWER3NIf"
 
 sub on_sys_init()
-
+	wln.ip="192.168.1.123"
+	wln.gatewayip="192.168.1.1"
+	wln.netmask="255.255.255.0"
 	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 	dns_start(sock_get("DNS"))
-
 end sub
 
 sub on_button_pressed()
 
-	http_request(HTTP_GET, "http://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
+'	http_request(HTTP_GET, "https://drive.google.com/file/d/1Cb3SP3_Ujr4fU1_NzcS8cc4CIpLwf4db/view", PL_SOCK_INTERFACE_NET,"","")
+	http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", PL_SOCK_INTERFACE_NET,"","")
+'	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+'	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
 
+end sub
+
+sub callback_http_open_romfile()
+	
+	romfile.open("sample.cer")
+	
 end sub
 
 sub on_sock_data_arrival()
@@ -33,6 +43,10 @@ dim pointer as dword
 dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
+
+	dim s as string = "data="+http_encode_url("data 1/.")
+	dim b as byte = http_send_post_data(s)
+	
 end sub
 
 sub callback_http_response_code_arrival(http_response as string)
@@ -76,6 +90,7 @@ sub on_sys_timer()
 	wln_proc_timer()
 	dhcp_proc_timer()
 	dns_proc_timer()
+	http_proc_timer()
 	
 end sub
 
@@ -133,6 +148,7 @@ sub callback_wln_failure(wln_state as en_wln_status_codes)
 end sub
 
 sub callback_dns_failure(status as en_dns_status_codes)
+	http_dns_failure()
 end sub
 
 sub callback_dns_pre_buffrq(num_of_pages_required as byte)
@@ -160,4 +176,9 @@ sub callback_dhcp_pre_buffrq(required_buff_pages as byte)
 end sub
 
 sub callback_dhcp_buff_released()
+end sub
+
+sub callback_http_request_failed(error_message as string)
+
+	sys.debugprint("ERROR: " + error_message + "\r\n")
 end sub

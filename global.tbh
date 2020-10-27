@@ -4,8 +4,7 @@
 #define DHCP_DEBUG_PRINT 1
 #define DNS_DEBUG_PRINT 1
 #define HTTP_REQUEST_INTERFACE PL_SOCK_INTERFACE_NET
-
-#define SSL 0
+#define SOCK_DEBUG_PRINT 1
 
 #define WLN_CLK PL_IO_NUM_53
 #define WLN_CS PL_IO_NUM_49
@@ -23,3 +22,9 @@ include "dhcp\trunk\dhcp.tbh"
 include "dns\trunk\dns.tbh"
 include "wln\trunk\wln.tbh"
 include "http.tbh" 
+
+
+#define HTTPBIN     1
+#define AMAZON		0
+#define MICROSOFT 	0
+#define GOOGLE		0
