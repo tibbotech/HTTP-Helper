@@ -10,7 +10,6 @@ sub http_start()
 		http_stop()
 		http_debugprint("Current HTTP request cancelled, starting new request.","")
 	end if
-	
 	if http_start_called=true then		
 		exit sub
 	else
@@ -37,7 +36,7 @@ sub http_proc_data()
 	if http_start_called=false then		
 		exit sub
 	end if		
-	if http_check_socket_list()=255 then
+	if http_check_socket_list()=NG then
 		exit sub
 	end if
 	http_get_headers()
@@ -385,7 +384,7 @@ end sub
 
 function http_send_post_data(data as string) as byte
 	
-	if http_check_socket_list()=255 then
+	if http_check_socket_list()=NG then
 		exit function
 	end if
 	if sock.txfree>255 then
@@ -447,7 +446,7 @@ end function
 
 function http_check_socket_list() as ok_ng
 	
-	http_check_socket_list=ng
+	http_check_socket_list=NG
 	if http_request_list.socket=sock.num and sock.num<>255 then
 		http_check_socket_list=ok
 	end if	
@@ -467,7 +466,7 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_start_called=false then		
 		exit sub
 	end if	
-	if http_check_socket_list()=255 then
+	if http_check_socket_list()=NG then
 		exit sub
 	end if	
 	if newstatesimple=PL_SSTS_CLOSED then
