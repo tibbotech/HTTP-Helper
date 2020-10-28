@@ -1,13 +1,9 @@
-#ifndef HTTP_NUM_OF_REQS
-	#define HTTP_NUM_OF_REQS 10
-#endif
-
 #ifndef HTTP_MAX_REQ_LEN
 	#define HTTP_MAX_REQ_LEN 255
 #endif
 
 #ifndef HTTP_DNS_SERVER
-#define HTTP_DNS_SERVER "8.8.8.8"
+	#define HTTP_DNS_SERVER "8.8.8.8"
 #endif
 
 const HTTP_STAMP="HTTP> "
@@ -24,7 +20,7 @@ enum HTTP_REQUEST_METHODS
 
 end enum
 
-enum reply_states
+enum http_reply_states
 	
 	FREE,
 	DNS_NOT_COMPLETE,
@@ -41,7 +37,7 @@ type http_request_type
 
 	dns_request_in_progress as boolean
 	http_request_in_progress as boolean
-	state as reply_states
+	state as http_reply_states
 	url as string
 	domain_name as string
 	socket as byte
@@ -62,38 +58,38 @@ declare function http_request(method as HTTP_REQUEST_METHODS, byref url as strin
 declare function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string) as byte
 declare function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-declare function get_http_content() as string
 declare function http_get_path(url as string) as string
-declare function get_data(size as byte) as string
+declare function http_get_data(size as byte) as string
 declare function http_check_socket_list() as ok_ng
 declare function http_get_domain_name(url as string) as string
 declare function http_send_post_data(data as string) as byte
 declare function http_encode_url(unencoded_url as string) as string
 declare function http_get_port(url as string) as word
+
 declare sub http_start()
 declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
 declare sub http_debugprint(byref print_type as string, byref print_data as string) 
 declare sub http_proc_data()
-declare sub get_http_headers()
+declare sub http_get_headers()
+declare sub http_get_content()
 declare sub http_init_request_socket()
-declare sub callback_http_headers_complete()
-declare sub callback_http_request_complete()
-declare sub callback_http_content_arrival(data as string)
-declare sub callback_http_response_code_arrival(http_response as string)
 declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
-declare sub callback_http_header_arrival(header_type as string, header_value as string)
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_dns_ok()
-declare sub http_release_socket(index as byte)
 declare sub http_dns_query(url as string)
-declare sub callback_http_send_post_data(remaining_content_length as dword)
-declare sub set_data(data as string)
+declare sub http_set_data(data as string)
 declare sub http_on_sock_data_sent()
-declare sub callback_http_post_data_sent_ok()
 declare sub http_check_dns_queue()
 declare sub http_stop()
-declare sub callback_http_request_complete()
-declare sub callback_http_open_romfile()
-declare sub callback_http_request_failed(error_message as string)
 declare sub http_dns_failure()
 declare sub http_proc_timer()
+
+declare sub callback_http_open_romfile()
+declare sub callback_http_header_arrival(header_type as string, header_value as string)
+declare sub callback_http_content_arrival(data as string)
+declare sub callback_http_send_post_data(remaining_content_length as dword)
+declare sub callback_http_post_data_sent_ok()
+declare sub callback_http_response_code_arrival(http_response as string)
+declare sub callback_http_headers_complete()
+declare sub callback_http_request_complete()
+declare sub callback_http_request_failed(error_message as string)

@@ -49,16 +49,10 @@ sub callback_http_send_post_data(remaining_content_length as dword)
 	
 end sub
 
-sub callback_http_response_code_arrival(http_response as string)
-end sub 
+sub callback_http_request_failed(error_message as string)
 
-sub callback_http_header_arrival(header_type as string, header_value as string)
-end sub
+	sys.debugprint("ERROR: " + error_message + "\r\n")
 
-sub callback_http_headers_complete()
-end sub
-
-sub callback_http_content_arrival(data as string)
 end sub
 
 sub on_sock_data_sent()
@@ -178,7 +172,14 @@ end sub
 sub callback_dhcp_buff_released()
 end sub
 
-sub callback_http_request_failed(error_message as string)
+sub callback_http_response_code_arrival(http_response as string)
+end sub 
 
-	sys.debugprint("ERROR: " + error_message + "\r\n")
+sub callback_http_header_arrival(header_type as string, header_value as string)
+end sub
+
+sub callback_http_headers_complete()
+end sub
+
+sub callback_http_content_arrival(data as string)
 end sub

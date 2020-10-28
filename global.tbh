@@ -12,7 +12,6 @@
 #define WLN_DO PL_IO_NUM_50
 #define WLN_RST PL_IO_NUM_51
 
-#define HTTP_NUM_OF_REQS 10
 #define HTTP_MAX_URL_LEN 255
 
 'INCLUDES------------------------------------------------------------
@@ -22,9 +21,3 @@ include "dhcp\trunk\dhcp.tbh"
 include "dns\trunk\dns.tbh"
 include "wln\trunk\wln.tbh"
 include "http.tbh" 
-
-
-#define HTTPBIN     1
-#define AMAZON		0
-#define MICROSOFT 	0
-#define GOOGLE		0
