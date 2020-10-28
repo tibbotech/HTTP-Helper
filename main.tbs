@@ -11,16 +11,18 @@ end sub
 
 sub on_button_pressed()
 
-'	http_request(HTTP_GET, "https://drive.google.com/file/d/1Cb3SP3_Ujr4fU1_NzcS8cc4CIpLwf4db/view", PL_SOCK_INTERFACE_NET,"","")
-	http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", PL_SOCK_INTERFACE_NET,"","")
-'	http_request(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
-'	http_request_long(HTTP_POST, "http://httpbin.org/post", PL_SOCK_INTERFACE_NET,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+'	http_request(HTTP_GET, "https://drive.google.com/file/d/1Cb3SP3_Ujr4fU1_NzcS8cc4CIpLwf4db/view", HTTP_REQUEST_INTERFACE,"","")
+'	http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
+'	http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+'	http_request_long(HTTP_POST, "http://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_GET, "https://www.microsoft.com/", PL_SOCK_INTERFACE_WLN,"", "text/plain")
+'	http_request(HTTP_GET, "https://www.google.com/", PL_SOCK_INTERFACE_WLN,"", "text/plain")
 
 end sub
 
 sub callback_http_open_romfile()
 	
-	romfile.open("sample.cer")
+	romfile.open("ms.cer")
 	
 end sub
 
@@ -107,7 +109,8 @@ sub callback_wln_ok()
 end sub
 
 sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip as string, byref gateway_ip as string, byref netmask as string, lease_time as dword)
-	
+
+#if NET_AVAILABLE
 	if interface=PL_SOCK_INTERFACE_NET then
 		if renew=YES and net.ip<>ip then
 			sys.reboot
@@ -118,6 +121,7 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			net.netmask=netmask
 		end if
 	end if
+#endif
 	
 	if interface=PL_SOCK_INTERFACE_WLN then
 		if renew=YES and wln.ip<>ip then

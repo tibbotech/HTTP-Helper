@@ -1,6 +1,6 @@
 [project]
 version=1
-platform=TPP3W(G2)
+platform=WM2000
 src_lib_ver=2_01_04
 name=HTTP-Helper
 output=HTTP-Helper.tpc

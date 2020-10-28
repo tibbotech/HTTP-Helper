@@ -50,7 +50,17 @@ sub http_get_headers()
 		exit sub
 	end if
 	dim http_reply, next_byte as string
-	while http_request_list.state<>HTTP_HEADERS_PROCESSED and sock.rxlen>0
+	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
+		if  http_request_list.ssl then
+			sock.tlspeekdata(1)
+			if sock.tlspeeklen = 0 then
+				exit sub
+			end if
+		else 
+			if sock.rxlen = 0 then
+				exit sub
+			end if			
+		end if
 		next_byte=http_get_data(1)
 		if next_byte="\x0a" then
 			if http_request_list.state=REQUEST_SENT then
@@ -110,7 +120,8 @@ end sub
 
 sub http_reset_socket()
 
-	http_request_list.dns_request_in_progress = false
+	http_request_list.dns_request_in_progress=false
+	http_request_list.http_request_in_progress=false
 	http_request_list.state=FREE 
 	
 end sub
@@ -220,7 +231,9 @@ sub http_init_request_socket()
 	sys.buffalloc()	 
 	if http_request_list.ssl=true then
 		sock.tlsdeinit()
+#if PLATFORM_ID<>WM2000
 		sock.tlsbuffrq(39)
+#endif
 		sys.buffalloc
 		callback_http_open_romfile()
 		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
@@ -481,16 +494,16 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	else
 		if http_request_list.ssl=true then
 			select case sock.state
-		case PL_SST_EST_AOPENED:
-			dim domain as string = http_request_list.domain_name
-			sock.tlshandshake(domain)
-		case PL_TLS_EST:
-			http_set_data(http_request_list.request)
-			sock.send()
-			if http_request_list.method=HTTP_POST and http_request_list.remaining_content_length>0 then
-				callback_http_send_post_data(http_request_list.remaining_content_length)
-			end if
-		end select
+			case PL_SST_EST_AOPENED:
+				dim domain as string = http_request_list.domain_name
+				sock.tlshandshake("oneroute.microsoft.com")
+			case PL_TLS_EST:
+				http_set_data(http_request_list.request)
+				sock.send()
+				if http_request_list.method=HTTP_POST and http_request_list.remaining_content_length>0 then
+					callback_http_send_post_data(http_request_list.remaining_content_length)
+				end if
+			end select
 		else	
 			http_set_data(http_request_list.request)
 			sock.send()
