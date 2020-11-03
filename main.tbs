@@ -2,6 +2,9 @@ include "global.tbh"
 const DEVICE_TOKEN = "EOIop9eFQjZrHWER3NIf"
 
 sub on_sys_init()
+'	wln.autoconnect=YES
+'	wln.autoconnectssid="TIBB1"
+'	wln.autoconnectpassword="12345678"
 	wln.ip="192.168.1.123"
 	wln.gatewayip="192.168.1.1"
 	wln.netmask="255.255.255.0"
@@ -11,18 +14,28 @@ end sub
 
 sub on_button_pressed()
 
+'	http_request(HTTP_POST, "http://192.168.1.110:3000", HTTP_REQUEST_INTERFACE,"xxx","text/plain")
 '	http_request(HTTP_GET, "https://drive.google.com/file/d/1Cb3SP3_Ujr4fU1_NzcS8cc4CIpLwf4db/view", HTTP_REQUEST_INTERFACE,"","")
 '	http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
-'	http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
+	http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"sensor_data","text/plain")
 '	http_request_long(HTTP_POST, "http://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
-	http_request(HTTP_GET, "https://www.microsoft.com/", PL_SOCK_INTERFACE_WLN,"", "text/plain")
-'	http_request(HTTP_GET, "https://www.google.com/", PL_SOCK_INTERFACE_WLN,"", "text/plain")
+'	http_request(HTTP_GET, "https://www.microsoft.com/", HTTP_REQUEST_INTERFACE,"", "text/plain") 'REDIRECTS! ZH-TW DOESN'T WORK!
+'	http_request(HTTP_GET, "https://www.google.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
+'	http_request(HTTP_GET, "https://www.facebook.com/unsupportedbrowser", HTTP_REQUEST_INTERFACE,"", "text/plain")
+'	http_request_with_buffers(HTTP_GET, "https://www.amazon.com/", HTTP_REQUEST_INTERFACE,"", "text/plain",2,32) 'STOPS GETTING CHUNKS EARLY DOORS
+'	http_request(HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", HTTP_REQUEST_INTERFACE,"", "text/plain")
+
 
 end sub
 
 sub callback_http_open_romfile()
 	
-	romfile.open("ms.cer")
+'	romfile.open("amazon.cer")
+'	romfile.open("sample.cer")
+'	romfile.open("facebook.cer")
+'	romfile.open("google.cer")
+	romfile.open("httpbin.cer")
+'	romfile.open("ms.cer")
 	
 end sub
 

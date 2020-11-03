@@ -51,7 +51,7 @@ sub http_get_headers()
 	end if
 	dim http_reply, next_byte as string
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
-		if  http_request_list.ssl then
+		if http_request_list.ssl then
 			sock.tlspeekdata(1)
 			if sock.tlspeeklen = 0 then
 				exit sub
@@ -86,8 +86,16 @@ sub http_get_headers()
 				header_value=left(header_value,len(header_value)-1)
 				callback_http_header_arrival(header_type,header_value)
 				http_debugprint("HTTP Header Arrival> Type: ",header_type + "\t\tValue: " + header_value)
-				if header_type="Content-Length" then
-					http_request_list.remaining_header_length=val(header_value)
+				sys.debugprint(header_value + "\r\n")
+				http_parse_headers(header_type)
+				http_parse_headers(header_value)
+				if header_type="content-length" then
+					http_request_list.remaining_response_content_length=val(header_value)
+				end if
+				if header_type="transfer-encoding" then
+					if header_value="chunked" then
+						http_request_list.chunked=true
+					end if
 				end if
 				http_reply=""
 			end if
@@ -103,19 +111,60 @@ sub http_get_content()
 	if http_request_list.state<>HTTP_HEADERS_PROCESSED then
 		exit sub
 	end if
-	dim data as string=http_get_data(255)
+	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
+		http_get_chunk_length()
+	end if
+	if http_request_list.remaining_response_content_length=0 then
+		http_request_list.chunked=false
+		http_request_complete()
+	end if	
+	dim data as string
+	if http_request_list.remaining_response_content_length>255 then
+		data=http_get_data(255)
+	else
+		data=http_get_data(http_request_list.remaining_response_content_length)
+	end if
 	if len(data) > 0 then
-		http_request_list.remaining_header_length=http_request_list.remaining_header_length-len(data)
+		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
 		http_debugprint("HTTP Content Arrival> ", data)
-		if http_request_list.remaining_header_length=0 or http_request_list.method=HTTP_HEAD then
-			http_request_list.state=REQUEST_COMPLETE 
-			sock.discard()
-			http_request_list.http_request_in_progress=false 
-			callback_http_request_complete()				
+		if http_request_list.chunked=false then
+			if http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD then
+				http_request_complete()
+			end if	
 		end if	
 	end if
 	
+end sub
+
+sub http_get_chunk_length()
+	
+	dim chunk_length,next_byte as string
+	dim timeout as boolean = false
+	while timeout <> true
+		dim tmp as string(1) = http_get_data(1)
+		if tmp = "\n" then
+			if len(chunk_length) > 0 then
+				exit while
+			end if
+		else
+			if tmp <> "\r" then
+				chunk_length=chunk_length+tmp
+			end if
+		end if
+	wend
+	chunk_length="&h"+chunk_length
+	http_request_list.remaining_response_content_length=val(chunk_length)
+	
+end sub
+
+sub http_request_complete()
+
+	http_request_list.state=REQUEST_COMPLETE 
+	sock.discard()
+	http_request_list.http_request_in_progress=false 
+	callback_http_request_complete()				
+
 end sub
 
 sub http_reset_socket()
@@ -173,9 +222,9 @@ function http_get_domain_name(url as string) as string
 		b=instr(1,url,"/",2)
 		url=right(url,len(url)-b)
 	end if	
-	if left(url, 4)="www." then
-		url=right(url,len(url)-4)
-	end if
+'	if left(url, 4)="www." then
+'		url=right(url,len(url)-4)
+'	end if
 	b=instr(1,url,"/",1)
 	http_get_domain_name=left(url,b-1)	
 	b=instr(1,url,":",1)
@@ -236,7 +285,7 @@ sub http_init_request_socket()
 #endif
 		sys.buffalloc
 		callback_http_open_romfile()
-		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
+		if sock.tlsinit(0)<>PL_TLS_SUCCESS then
 			callback_http_request_failed("Error loading certificate")
 			http_debugprint("HTTP Request Failed> ", "Error loading certificate")
 			http_reset_socket()
@@ -327,6 +376,7 @@ function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as 
 	http_request_list.interface=interface
 	http_request_list.txbuffrq=txbuffrq
 	http_request_list.rxbuffrq=rxbuffrq
+	http_request_list.chunked=false
 	if http_request_list.http_request_in_progress=false then
 		http_get_ip_and_port(url)
 	end if
@@ -496,7 +546,7 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 			select case sock.state
 			case PL_SST_EST_AOPENED:
 				dim domain as string = http_request_list.domain_name
-				sock.tlshandshake("oneroute.microsoft.com")
+				sock.tlshandshake(domain)
 			case PL_TLS_EST:
 				http_set_data(http_request_list.request)
 				sock.send()
@@ -526,6 +576,38 @@ sub http_on_sock_data_sent()
 	else
 		callback_http_post_data_sent_ok()
 		http_debugprint("HTTP Post Data Sent","")
+	end if
+	
+end sub
+
+sub http_parse_headers(byref input_string as string)
+	
+	http_to_lower_case(input_string) 
+	http_remove_leading_whitespace(input_string)
+
+end sub
+
+sub http_to_lower_case(byref input_string as string) 
+	
+	dim b as byte
+	dim current_character as string(1)
+	dim modified_string as string
+	for b=1 to len(input_string)
+		current_character = (mid(input_string,b,1))
+		dim b as byte=asc(current_character)
+		if asc(current_character)>64 and asc(current_character)<91 then
+			current_character=chr(asc(current_character)+32)
+		end if
+		modified_string=modified_string+current_character
+	next b
+	input_string=modified_string
+
+end sub
+
+sub http_remove_leading_whitespace(byref input_string as string)
+
+	if asc(left(input_string,1))=32 then
+		input_string=right(input_string,len(input_string)-1)
 	end if
 	
 end sub

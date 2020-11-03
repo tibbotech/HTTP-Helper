@@ -45,8 +45,9 @@ type http_request_type
 	ip as string(15)
 	ssl as boolean
 	request as string(HTTP_MAX_REQ_LEN)
-	remaining_header_length as word
+	remaining_response_content_length as word
 	remaining_content_length as dword
+	chunked as boolean
 	method as HTTP_REQUEST_METHODS
 	interface as pl_sock_interfaces
 	txbuffrq as byte
@@ -79,6 +80,12 @@ declare sub http_set_data(data as string)
 declare sub http_on_sock_data_sent()
 declare sub http_check_dns_queue()
 declare sub http_stop()
+declare sub http_request_complete()
+declare sub http_get_chunk_length()
+declare sub http_to_lower_case(byref input_string as string) 
+declare sub http_remove_leading_whitespace(byref input_string as string)
+declare sub http_parse_headers(byref input_string as string)
+
 
 declare sub http_proc_timer()
 declare sub http_dns_failure()
