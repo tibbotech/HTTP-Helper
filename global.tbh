@@ -1,8 +1,9 @@
 'DEFINES-------------------------------------------------------------
 
 #define HTTP_DEBUG_PRINT 1
-#define DHCP_DEBUG_PRINT 1
-#define DNS_DEBUG_PRINT 1
+#define DHCP_DEBUG_PRINT 0
+#define DNS_DEBUG_PRINT 0
+
 #if PLATFORM_ID=WM2000
 	#define HTTP_REQUEST_INTERFACE PL_SOCK_INTERFACE_WLN
 #else
@@ -26,3 +27,5 @@ include "dhcp\trunk\dhcp.tbh"
 include "dns\trunk\dns.tbh"
 include "wln\trunk\wln.tbh"
 include "http.tbh" 
+
+declare sub do_test()

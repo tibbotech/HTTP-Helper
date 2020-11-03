@@ -1,8 +1,13 @@
 include "global.tbh"
 
+const HTTP_TLS_BUFF_PAGES=39
+
 dim http_start_called as boolean=false
 dim http_methods(6) as string(7) = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
 dim http_request_list as http_request_type
+dim http_timer_count as word = 0
+
+declare sub http_failed(byref error_message as string)
 
 sub http_start()
 	
@@ -38,7 +43,8 @@ sub http_proc_data()
 	end if		
 	if http_check_socket_list()=NG then
 		exit sub
-	end if
+	end if 
+	http_timer_count=0
 	http_get_headers()
 	http_get_content()
 
@@ -86,7 +92,6 @@ sub http_get_headers()
 				header_value=left(header_value,len(header_value)-1)
 				callback_http_header_arrival(header_type,header_value)
 				http_debugprint("HTTP Header Arrival> Type: ",header_type + "\t\tValue: " + header_value)
-				sys.debugprint(header_value + "\r\n")
 				http_parse_headers(header_type)
 				http_parse_headers(header_value)
 				if header_type="content-length" then
@@ -160,7 +165,8 @@ end sub
 
 sub http_request_complete()
 
-	http_request_list.state=REQUEST_COMPLETE 
+	http_request_list.state=FREE
+	sock.close()
 	sock.discard()
 	http_request_list.http_request_in_progress=false 
 	callback_http_request_complete()				
@@ -211,6 +217,13 @@ sub http_proc_timer()
 		exit sub
 	end if
 	http_check_dns_queue()
+	if http_request_list.state > FREE AND http_request_list.state < REQUEST_SENT then
+		http_timer_count = http_timer_count + 1
+		if http_timer_count > HTTP_TIMEOUT then
+			http_failed("Connection failure")
+		end if
+	end if
+	
 	
 end sub
 
@@ -222,9 +235,6 @@ function http_get_domain_name(url as string) as string
 		b=instr(1,url,"/",2)
 		url=right(url,len(url)-b)
 	end if	
-'	if left(url, 4)="www." then
-'		url=right(url,len(url)-4)
-'	end if
 	b=instr(1,url,"/",1)
 	http_get_domain_name=left(url,b-1)	
 	b=instr(1,url,":",1)
@@ -250,7 +260,7 @@ function http_get_path(url as string) as string
 end function
 
 sub http_init_request_socket()
-
+	dim i as word
 	if http_request_list.txbuffrq=0 then
 		http_request_list.txbuffrq=2
 	end if
@@ -258,7 +268,7 @@ sub http_init_request_socket()
 		http_request_list.rxbuffrq=2
 	end if 
 	sock.num=http_request_list.socket
-	sock.connectiontout=120
+	sock.connectiontout=HTTP_TIMEOUT
 	sock.targetip=http_request_list.ip
 	sock.protocol=PL_SOCK_PROTOCOL_TCP
 	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
@@ -266,34 +276,32 @@ sub http_init_request_socket()
 	sock.allowedinterfaces = sock.availableinterfaces	
 	sock.targetinterface=http_request_list.interface
 	if sock.txbuffrq(http_request_list.txbuffrq) <> http_request_list.txbuffrq then
-		callback_http_request_failed("Not enough space in TX buffer")
+		http_failed("Not enough space in TX buffer")
 		http_debugprint("HTTP Request Failed> ", "Not enough space in TX buffer")
-		http_reset_socket()
 		exit sub
 	end if
 	if sock.rxbuffrq(http_request_list.rxbuffrq) <> http_request_list.rxbuffrq  then
-		callback_http_request_failed("Not enough space in RX buffer")
+		http_failed("Not enough space in RX buffer")
 		http_debugprint("HTTP Request Failed> ", "Not enough space in RX buffer")
-		http_reset_socket()
 		exit sub
 	end if
 	sys.buffalloc()	 
 	if http_request_list.ssl=true then
 		sock.tlsdeinit()
 #if PLATFORM_ID<>WM2000
-		sock.tlsbuffrq(39)
+		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
 #endif
 		sys.buffalloc
 		callback_http_open_romfile()
-		if sock.tlsinit(0)<>PL_TLS_SUCCESS then
-			callback_http_request_failed("Error loading certificate")
-			http_debugprint("HTTP Request Failed> ", "Error loading certificate")
-			http_reset_socket()
+		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
+			http_failed("Error loading certificate")
 			exit sub
 		end if
 		sock.rxclear()
 		sock.txclear()
 	end if	
+	i=sys.timercount
+	sock.discard()
 	sock.connect()
 
 end sub
@@ -371,6 +379,7 @@ function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as 
 'Sends an HTTP request of a maximum length of 255 bytes
 
 	http_start()
+	http_timer_count = 0
 	http_generate_request(url, method, data, content_type, 0, false)
 	http_request_with_buffers=http_request_list.socket
 	http_request_list.interface=interface
@@ -518,9 +527,7 @@ end function
 
 sub http_dns_failure()
 
-	http_reset_socket()
-	callback_http_request_failed("DNS failure")	
-	http_debugprint("HTTP Request Failed> ", "DNS failure")
+	http_failed("DNS failure")	
 	
 end sub 
 
@@ -532,13 +539,11 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_check_socket_list()=NG then
 		exit sub
 	end if	
-	if newstatesimple=PL_SSTS_CLOSED then
-		if http_request_list.state <> REQUEST_COMPLETE  then
-			callback_http_request_failed("Connection failure")
-			http_debugprint("HTTP Request Failed> ", "Connection failure")
-		end if		
-		http_reset_socket()
-	end if	
+'	if newstatesimple=PL_SSTS_CLOSED then
+'		if http_request_list.state >= REQUEST_SENT then
+'			http_failed("Connection failure")
+'		end if		
+'	end if	
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
 	else
@@ -610,4 +615,10 @@ sub http_remove_leading_whitespace(byref input_string as string)
 		input_string=right(input_string,len(input_string)-1)
 	end if
 	
+end sub
+
+sub http_failed(byref error_message as string)
+	http_reset_socket()
+	http_debugprint("Request Failed", error_message)
+	callback_http_request_failed(error_message)
 end sub
