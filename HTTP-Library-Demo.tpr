@@ -160,3 +160,9 @@ format=
 condition=
 locked=no
 location=project
+[file20]
+path=chunky.cer
+type=binary
+format=
+locked=no
+location=project

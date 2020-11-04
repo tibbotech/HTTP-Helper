@@ -1,5 +1,7 @@
 include "global.tbh"
 dim test_no as byte = 0
+dim test_inprogress as boolean = true
+const NUM_OF_TESTS = 10
 
 type http_test
 	method as HTTP_REQUEST_METHODS
@@ -7,14 +9,28 @@ type http_test
 	data as string
 	content_type as string
 	cert as string
+	result as string
 end type
 
-dim tests as http_test(10) = {
+dim tests as http_test(NUM_OF_TESTS) = {
+'	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"},
 	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
-	{HTTP_GET, "http://192.168.1.110:3000", "", "text/plain", ""},
-	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
-	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"},
-	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"}
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+'	http_request(HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", HTTP_REQUEST_INTERFACE,"", "text/plain")
+'	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "text/plain", "ms.cer"},
+'	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+'	{HTTP_GET, "http://192.168.1.110:3000", "", "text/plain", ""},
+'	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
+'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"},
+'	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"}
 }
 
 sub on_sys_init()
@@ -23,13 +39,19 @@ sub on_sys_init()
 end sub
 
 sub do_test()
-	
-	sys.debugprint("Test " + str(test_no) + " started\r\n")
-	if tests(test_no).url<>"" then
+	test_inprogress = true
+	if test_no < NUM_OF_TESTS AND tests(test_no).url<>"" then
+		sys.debugprint("Test " + str(test_no) + " started\r\n")
 		dim test as http_test = tests(test_no)
-		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type)
+		http_request_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type,2,10)
 	else
 		sys.debugprint("Tests ended\r\n")
+		dim i as byte = 0
+		for i=0 to NUM_OF_TESTS-1
+			if tests(i).url<>"" then
+				sys.debugprint("Test " + str(i) + tests(i).result + "\r\n")
+			end if
+		next i
 	end if
 	
 end sub
@@ -71,16 +93,20 @@ end sub
 sub callback_http_request_complete()
 	
 	sys.debugprint("Test Number " + str(test_no) + ": Passed\r\n")
+	tests(test_no).result = "Passed"
 	test_no=test_no+1
-	do_test()
+	test_inprogress = false
+	
 end sub
 
 sub callback_http_request_failed(error_message as string)
 
 	sys.debugprint("Test Number " + str(test_no) + ": Failed\r\n")
+	tests(test_no).result = error_message
 	test_no=test_no+1
+	test_inprogress = false
 	sys.debugprint("FAAIILL!\r\n")
-'	do_test()
+
 end sub
 
 sub on_sys_timer()
@@ -89,6 +115,9 @@ sub on_sys_timer()
 	dhcp_proc_timer()
 	dns_proc_timer()
 	http_proc_timer()
+	if test_inprogress<>true then
+		do_test()
+	end if
 	
 end sub
 
@@ -136,7 +165,7 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 			wln.netmask=netmask
 		end if
 	end if		
-	do_test()
+	test_inprogress = false
 	
 end sub
 

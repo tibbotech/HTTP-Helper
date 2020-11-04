@@ -45,7 +45,6 @@ sub http_proc_data()
 	if http_check_socket_list()=NG then
 		exit sub
 	end if 
-	http_timer_count=0
 	http_get_headers()
 	http_get_content()
 
@@ -56,6 +55,7 @@ sub http_get_headers()
 	if http_request_list.state<>REQUEST_SENT then
 		exit sub
 	end if
+	http_timer_count=0
 	dim http_reply, next_byte as string
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
 		if http_request_list.ssl then
@@ -97,6 +97,7 @@ sub http_get_headers()
 				http_parse_headers(header_value)
 				if header_type="content-length" then
 					http_request_list.remaining_response_content_length=val(header_value)
+					http_chunk_length = http_request_list.remaining_response_content_length
 				end if
 				if header_type="transfer-encoding" then
 					if header_value="chunked" then
@@ -117,6 +118,7 @@ sub http_get_content()
 	if http_request_list.state<>HTTP_HEADERS_PROCESSED then
 		exit sub
 	end if
+	http_timer_count=0
 	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
 		http_debugprint("Chunk complete")
 		http_get_chunk_length()
@@ -135,7 +137,6 @@ sub http_get_content()
 		http_debugprint(str(http_request_list.remaining_response_content_length) + "/" + str(http_chunk_length))
 		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
-'		http_debugprint(data)
 		if http_request_list.chunked=false then
 			if http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD then
 				http_request_complete()
