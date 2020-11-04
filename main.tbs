@@ -10,39 +10,20 @@ type http_test
 end type
 
 dim tests as http_test(10) = {
-	{HTTP_GET, "https://www.google.com/", "sensor_data", "text/plain", "google.cer"},
-	{HTTP_GET, "http://192.168.1.110:3000", "sensor_data", "text/plain", ""},
-	{HTTP_GET, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
-	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "sensor_data", "text/plain", "sample.cer"},
-	{HTTP_GET, "https://www.amazon.com/", "sensor_data", "text/plain", "amazon.cer"}
+	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
+	{HTTP_GET, "http://192.168.1.110:3000", "", "text/plain", ""},
+	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
+	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"},
+	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"}
 }
 
 sub on_sys_init()
 	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
-	dns_start(sock_get("DNS"))
-	
-	
-end sub
-
-sub on_button_pressed()
-
-
-
-'	
-'	http_request(HTTP_GET, "https://drive.google.com/file/d/1Cb3SP3_Ujr4fU1_NzcS8cc4CIpLwf4db/view", HTTP_REQUEST_INTERFACE,"","")
-'	http_request_long(HTTP_POST, "http://httpbin.org/post", HTTP_REQUEST_INTERFACE,"data="+http_encode_url("sample 1"),"application/x-www-form-urlencoded")
-'	http_request(HTTP_GET, "https://www.microsoft.com/", HTTP_REQUEST_INTERFACE,"", "text/plain") 'REDIRECTS! ZH-TW DOESN'T WORK!
-'	http_request(HTTP_GET, "https://www.google.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
-'	http_request(HTTP_GET, "https://www.facebook.com/unsupportedbrowser", HTTP_REQUEST_INTERFACE,"", "text/plain")
-'	http_request_with_buffers(HTTP_GET, "https://www.amazon.com/", HTTP_REQUEST_INTERFACE,"", "text/plain",2,32) 'STOPS GETTING CHUNKS EARLY DOORS
-'	http_request(HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", HTTP_REQUEST_INTERFACE,"", "text/plain")
-
-
+	dns_start(sock_get("DNS"))	
 end sub
 
 sub do_test()
-
-
+	
 	sys.debugprint("Test " + str(test_no) + " started\r\n")
 	if tests(test_no).url<>"" then
 		dim test as http_test = tests(test_no)
@@ -50,21 +31,6 @@ sub do_test()
 	else
 		sys.debugprint("Tests ended\r\n")
 	end if
-		test_no=test_no+1
-'	select case test_no
-'	case 1:
-'		http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"sensor_data","text/plain")
-''		http_request(HTTP_GET, "https://www.amazon.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
-'	case 2:
-'		http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
-'	case 3:
-'		http_request(HTTP_GET, "https://www.google.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
-'	case 4:
-'		http_request(HTTP_GET,"http://192.168.1.110:3000", HTTP_REQUEST_INTERFACE,"","text/plain")
-'	case else:
-'		sys.debugprint("Tests ended\r\n")
-'	end select
-	
 	
 end sub
 
@@ -74,26 +40,7 @@ sub callback_http_open_romfile()
 	if tests(test_no).cert <> "" then
 		romfile.open(tests(test_no).cert)
 	end if
-'	select case test_no
-'	case 1:
-'		romfile.open("amazon.cer")
-''		romfile.open("httpbin.cer")
-'	case 2:
-'		romfile.open("sample.cer")
-'	case 3:
-'		romfile.open("google.cer")
-'	case else:
-		
-'	end select
-	
-	
-	
-'	romfile.open("amazon.cer")
 
-'	romfile.open("facebook.cer")
-'	romfile.open("google.cer")
-'	romfile.open("ms.cer")
-	
 end sub
 
 sub on_sock_data_arrival()
@@ -124,13 +71,16 @@ end sub
 sub callback_http_request_complete()
 	
 	sys.debugprint("Test Number " + str(test_no) + ": Passed\r\n")
+	test_no=test_no+1
 	do_test()
 end sub
 
 sub callback_http_request_failed(error_message as string)
 
 	sys.debugprint("Test Number " + str(test_no) + ": Failed\r\n")
+	test_no=test_no+1
 	sys.debugprint("FAAIILL!\r\n")
+'	do_test()
 end sub
 
 sub on_sys_timer()

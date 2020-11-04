@@ -6,6 +6,7 @@ dim http_start_called as boolean=false
 dim http_methods(6) as string(7) = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
 dim http_request_list as http_request_type
 dim http_timer_count as word = 0
+dim http_chunk_length as word = 0
 
 declare sub http_failed(byref error_message as string)
 
@@ -13,7 +14,7 @@ sub http_start()
 	
 	if http_request_list.http_request_in_progress=true then
 		http_stop()
-		http_debugprint("Current HTTP request cancelled, starting new request.","")
+		http_debugprint("Current HTTP request cancelled, starting new request.")
 	end if
 	if http_start_called=true then		
 		exit sub
@@ -75,7 +76,7 @@ sub http_get_headers()
 				dim b2 as byte=instr(1,http_reply," ",2)
 				http_reply=mid(http_reply,b1+1,b2-b1-1)
 				callback_http_response_code_arrival(http_reply)
-				http_debugprint("HTTP Response Code Arrival> Reply: ", http_reply)
+				http_debugprint("Response code:" + http_reply)
 				http_request_list.state=HTTP_RESPONSE_PROCESSED
 				http_reply=""
 			else if http_request_list.state=HTTP_RESPONSE_PROCESSED then
@@ -83,7 +84,7 @@ sub http_get_headers()
 				dim b as byte= instr(1,http_reply,": ",1)
 				if b=0 then
 					callback_http_headers_complete()
-					http_debugprint("HTTP Headers Complete", "")
+					http_debugprint("Headers Complete")
 					http_request_list.state=HTTP_HEADERS_PROCESSED
 					exit while
 				end if
@@ -91,7 +92,7 @@ sub http_get_headers()
 				header_value=right(http_reply,len(http_reply)-b-1)
 				header_value=left(header_value,len(header_value)-1)
 				callback_http_header_arrival(header_type,header_value)
-				http_debugprint("HTTP Header Arrival> Type: ",header_type + "\t\tValue: " + header_value)
+				http_debugprint("Header> " + header_type + "\t\tValue: " + header_value)
 				http_parse_headers(header_type)
 				http_parse_headers(header_value)
 				if header_type="content-length" then
@@ -117,6 +118,7 @@ sub http_get_content()
 		exit sub
 	end if
 	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
+		http_debugprint("Chunk complete")
 		http_get_chunk_length()
 	end if
 	if http_request_list.remaining_response_content_length=0 then
@@ -130,9 +132,10 @@ sub http_get_content()
 		data=http_get_data(http_request_list.remaining_response_content_length)
 	end if
 	if len(data) > 0 then
+		http_debugprint(str(http_request_list.remaining_response_content_length) + "/" + str(http_chunk_length))
 		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
-		http_debugprint("HTTP Content Arrival> ", data)
+'		http_debugprint(data)
 		if http_request_list.chunked=false then
 			if http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD then
 				http_request_complete()
@@ -160,6 +163,7 @@ sub http_get_chunk_length()
 	wend
 	chunk_length="&h"+chunk_length
 	http_request_list.remaining_response_content_length=val(chunk_length)
+	http_chunk_length = http_request_list.remaining_response_content_length
 	
 end sub
 
@@ -217,10 +221,10 @@ sub http_proc_timer()
 		exit sub
 	end if
 	http_check_dns_queue()
-	if http_request_list.state > FREE AND http_request_list.state < REQUEST_SENT then
+	if http_request_list.state > FREE then
 		http_timer_count = http_timer_count + 1
 		if http_timer_count > HTTP_TIMEOUT then
-			http_failed("Connection failure")
+			http_failed("Timeout")
 		end if
 	end if
 	
@@ -277,12 +281,10 @@ sub http_init_request_socket()
 	sock.targetinterface=http_request_list.interface
 	if sock.txbuffrq(http_request_list.txbuffrq) <> http_request_list.txbuffrq then
 		http_failed("Not enough space in TX buffer")
-		http_debugprint("HTTP Request Failed> ", "Not enough space in TX buffer")
 		exit sub
 	end if
 	if sock.rxbuffrq(http_request_list.rxbuffrq) <> http_request_list.rxbuffrq  then
 		http_failed("Not enough space in RX buffer")
-		http_debugprint("HTTP Request Failed> ", "Not enough space in RX buffer")
 		exit sub
 	end if
 	sys.buffalloc()	 
@@ -442,13 +444,13 @@ sub http_check_dns_queue()
 	
 end sub
 
-sub http_debugprint(byref print_type as string, byref print_data as string) 
+sub http_debugprint(byref print_data as string) 
 	
 	#if HTTP_DEBUG_PRINT 
-		sys.debugprint(HTTP_STAMP)
-		sys.debugprint(print_type)
-		sys.debugprint(print_data)
-		sys.debugprint(HTTP_CR_LF)
+'		sys.debugprint(HTTP_STAMP)
+'		sys.debugprint(print_data)
+'		sys.debugprint(HTTP_CR_LF)
+		sys.debugprint(HTTP_STAMP + mid(print_data,0,247) + HTTP_CR_LF)
 	#endif
 
 end sub
@@ -580,7 +582,7 @@ sub http_on_sock_data_sent()
 		callback_http_send_post_data(http_request_list.remaining_content_length)
 	else
 		callback_http_post_data_sent_ok()
-		http_debugprint("HTTP Post Data Sent","")
+		http_debugprint("HTTP Post Data Sent")
 	end if
 	
 end sub
@@ -619,6 +621,6 @@ end sub
 
 sub http_failed(byref error_message as string)
 	http_reset_socket()
-	http_debugprint("Request Failed", error_message)
+	http_debugprint("Failed reason:" + error_message)
 	callback_http_request_failed(error_message)
 end sub
