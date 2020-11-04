@@ -1,9 +1,26 @@
 include "global.tbh"
 dim test_no as byte = 0
 
+type http_test
+	method as HTTP_REQUEST_METHODS
+	url as string
+	data as string
+	content_type as string
+	cert as string
+end type
+
+dim tests as http_test(10) = {
+	{HTTP_GET, "https://www.google.com/", "sensor_data", "text/plain", "google.cer"},
+	{HTTP_GET, "http://192.168.1.110:3000", "sensor_data", "text/plain", ""},
+	{HTTP_GET, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
+	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "sensor_data", "text/plain", "sample.cer"},
+	{HTTP_GET, "https://www.amazon.com/", "sensor_data", "text/plain", "amazon.cer"}
+}
+
 sub on_sys_init()
 	dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 	dns_start(sock_get("DNS"))
+	
 	
 end sub
 
@@ -25,21 +42,28 @@ end sub
 
 sub do_test()
 
-	test_no=test_no+1
+
 	sys.debugprint("Test " + str(test_no) + " started\r\n")
-	select case test_no
-	case 1:
-'		http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"sensor_data","text/plain")
-		http_request(HTTP_GET, "https://www.amazon.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
-	case 2:
-		http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
-	case 3:
-		http_request(HTTP_GET, "https://www.google.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
-	case 4:
-		http_request(HTTP_GET,"http://192.168.1.110:3000", HTTP_REQUEST_INTERFACE,"","text/plain")
-	case else:
+	if tests(test_no).url<>"" then
+		dim test as http_test = tests(test_no)
+		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type)
+	else
 		sys.debugprint("Tests ended\r\n")
-	end select
+	end if
+		test_no=test_no+1
+'	select case test_no
+'	case 1:
+'		http_request(HTTP_POST, "https://httpbin.org/post", HTTP_REQUEST_INTERFACE,"sensor_data","text/plain")
+''		http_request(HTTP_GET, "https://www.amazon.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
+'	case 2:
+'		http_request(HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", HTTP_REQUEST_INTERFACE,"","")
+'	case 3:
+'		http_request(HTTP_GET, "https://www.google.com/", HTTP_REQUEST_INTERFACE,"", "text/plain")
+'	case 4:
+'		http_request(HTTP_GET,"http://192.168.1.110:3000", HTTP_REQUEST_INTERFACE,"","text/plain")
+'	case else:
+'		sys.debugprint("Tests ended\r\n")
+'	end select
 	
 	
 end sub
@@ -47,17 +71,20 @@ end sub
 
 sub callback_http_open_romfile()
 	
-	select case test_no
-	case 1:
-		romfile.open("amazon.cer")
-'		romfile.open("httpbin.cer")
-	case 2:
-		romfile.open("sample.cer")
-	case 3:
-		romfile.open("google.cer")
-	case else:
+	if tests(test_no).cert <> "" then
+		romfile.open(tests(test_no).cert)
+	end if
+'	select case test_no
+'	case 1:
+'		romfile.open("amazon.cer")
+''		romfile.open("httpbin.cer")
+'	case 2:
+'		romfile.open("sample.cer")
+'	case 3:
+'		romfile.open("google.cer")
+'	case else:
 		
-	end select
+'	end select
 	
 	
 	
