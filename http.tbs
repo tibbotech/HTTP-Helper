@@ -128,8 +128,8 @@ sub http_get_content()
 		http_request_complete()
 	end if	
 	dim data as string
-	if http_request_list.remaining_response_content_length>255 then
-		data=http_get_data(255)
+	if http_request_list.remaining_response_content_length>HTTP_MAX_DATA_LENGTH then
+		data=http_get_data(HTTP_MAX_DATA_LENGTH)
 	else
 		data=http_get_data(http_request_list.remaining_response_content_length)
 	end if
@@ -449,10 +449,7 @@ end sub
 sub http_debugprint(byref print_data as string) 
 	
 	#if HTTP_DEBUG_PRINT 
-'		sys.debugprint(HTTP_STAMP)
-'		sys.debugprint(print_data)
-'		sys.debugprint(HTTP_CR_LF)
-		sys.debugprint(HTTP_STAMP + mid(print_data,0,247) + HTTP_CR_LF)
+		sys.debugprint(HTTP_STAMP + left(print_data,HTTP_MAX_DATA_LENGTH) + HTTP_CR_LF)
 	#endif
 
 end sub

@@ -10,6 +10,19 @@
 	#define HTTP_TIMEOUT 60
 #endif
 
+
+#ifndef HTTP_MAX_DATA_LENGTH
+	#if HTTP_DEBUG_PRINT
+		#define HTTP_MAX_DATA_LENGTH 247
+	#else
+		#define HTTP_MAX_DATA_LENGTH 255
+	#endif
+#endif
+
+
+
+
+
 const HTTP_STAMP="HTTP> "
 const HTTP_CR_LF=chr(13)+chr(10)
 
