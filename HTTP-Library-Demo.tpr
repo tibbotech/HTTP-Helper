@@ -22,7 +22,7 @@ address=0.36.119.82.191.221
 [address4]
 platform=WM2000
 transport=udp_winpcap
-address=156.101.249.54.101.22
+address=0.101.249.54.101.44
 [address5]
 platform=WM2000
 transport=serial
@@ -164,5 +164,6 @@ location=project
 path=chunky.cer
 type=binary
 format=
+condition=
 locked=no
 location=project

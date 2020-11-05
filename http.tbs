@@ -137,6 +137,7 @@ sub http_get_content()
 		http_debugprint(str(http_request_list.remaining_response_content_length) + "/" + str(http_chunk_length))
 		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
+		http_debugprint(data)
 		if http_request_list.chunked=false then
 			if http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD then
 				http_request_complete()
