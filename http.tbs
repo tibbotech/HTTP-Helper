@@ -120,8 +120,11 @@ sub http_get_content()
 	end if
 	http_timer_count=0
 	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
-		http_debugprint("Chunk complete")
-		http_get_chunk_length()
+		if http_get_chunk_length()=NG then
+			exit sub
+		else 
+			http_debugprint("Chunk complete")
+		end if		
 	end if
 	if http_request_list.remaining_response_content_length=0 then
 		http_request_list.chunked=false
@@ -147,27 +150,38 @@ sub http_get_content()
 	
 end sub
 
-sub http_get_chunk_length()
-	
+function http_get_chunk_length() as ok_ng
+	http_get_chunk_length = NG
 	dim chunk_length,next_byte as string
+	dim buffer_data as string = http_peek_data(255)
 	dim timeout as boolean = false
-	while timeout <> true
-		dim tmp as string(1) = http_get_data(1)
+	dim tmp as string(1)
+	dim index as byte = 1
+	if len(buffer_data) = 0 then
+		exit function
+	end if
+	for index = 1 to len(buffer_data)-1
+		tmp = mid(buffer_data,index,1)
 		if tmp = "\n" then
 			if len(chunk_length) > 0 then
-				exit while
+				http_get_chunk_length = OK
+				http_get_data(index)
+				exit for
 			end if
 		else
 			if tmp <> "\r" then
 				chunk_length=chunk_length+tmp
 			end if
 		end if
-	wend
+	next index
+	if chunk_length = "" then
+		exit function
+	end if
 	chunk_length="&h"+chunk_length
 	http_request_list.remaining_response_content_length=val(chunk_length)
 	http_chunk_length = http_request_list.remaining_response_content_length
 	
-end sub
+end function
 
 sub http_request_complete()
 
@@ -496,6 +510,16 @@ function http_get_data(size as byte) as string
 	
 end function
 
+function http_peek_data(size as byte) as string
+
+	if http_request_list.ssl=true then
+		http_peek_data=sock.tlspeekdata(size)
+	else
+		http_peek_data=sock.peekdata(size)
+	end if
+	
+end function
+
 function http_encode_url(unencoded_url as string) as string
  
 	dim i, j, n as byte
@@ -540,11 +564,6 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_check_socket_list()=NG then
 		exit sub
 	end if	
-'	if newstatesimple=PL_SSTS_CLOSED then
-'		if http_request_list.state >= REQUEST_SENT then
-'			http_failed("Connection failure")
-'		end if		
-'	end if	
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
 	else
