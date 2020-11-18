@@ -237,7 +237,7 @@ sub http_proc_timer()
 		exit sub
 	end if
 	http_check_dns_queue()
-	if http_request_list.state > FREE then
+	if http_request_list.state > DNS_COMPLETE then
 		http_timer_count = http_timer_count + 1
 		if http_timer_count > HTTP_TIMEOUT then
 			http_failed("Timeout")
@@ -441,7 +441,9 @@ sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_str
 end sub
 
 sub http_dns_ok()
-	
+	if http_request_list.domain_name<>dns_current_domain() then
+		exit sub
+	end if
 	http_request_list.dns_request_in_progress=false
 	http_request_list.state=DNS_COMPLETE
 	http_init_request_socket()
@@ -551,7 +553,9 @@ function http_check_socket_list() as ok_ng
 end function
 
 sub http_dns_failure()
-
+	if http_request_list.domain_name<>dns_current_domain() then
+		exit sub
+	end if
 	http_failed("DNS failure")	
 	
 end sub 
