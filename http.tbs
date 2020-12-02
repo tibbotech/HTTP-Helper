@@ -589,7 +589,6 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	else
 		if http_request_list.ssl=true then
 #if SUPPORTS_TLS
-
 			select case sock.state
 			case PL_SST_EST_AOPENED:
 				dim domain as string = http_request_list.domain_name
@@ -601,13 +600,13 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 					callback_http_send_post_data(http_request_list.remaining_content_length)
 				end if
 			end select
+#endif
 		else	
 			http_set_data(http_request_list.request)
 			sock.send()
 			if http_request_list.remaining_content_length>0 then
 				callback_http_send_post_data(http_request_list.remaining_content_length)
 			end if
-#endif
 		end if
 	end if
 	http_request_list.state=REQUEST_SENT	
