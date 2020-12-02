@@ -19,9 +19,11 @@
 	#endif
 #endif
 
-
-
-
+#if PLATFORM_ID=WM2000 OR PLATFORM_ID=TPP2WG2 OR PLATFORM_ID=TPP3WG2
+	#define SUPPORTS_TLS 1
+#else	
+	#define SUPPORTS_TLS 0
+#endif
 
 const HTTP_STAMP="HTTP> "
 const HTTP_CR_LF=chr(13)+chr(10)

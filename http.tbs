@@ -59,10 +59,12 @@ sub http_get_headers()
 	dim http_reply, next_byte as string
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
 		if http_request_list.ssl then
-			sock.tlspeekdata(1)
-			if sock.tlspeeklen = 0 then
-				exit sub
-			end if
+#if SUPPORTS_TLS
+				sock.tlspeekdata(1)
+				if sock.tlspeeklen = 0 then
+					exit sub
+				end if
+#endif
 		else 
 			if sock.rxlen = 0 then
 				exit sub
@@ -305,6 +307,7 @@ sub http_init_request_socket()
 	end if
 	sys.buffalloc()	 
 	if http_request_list.ssl=true then
+#if SUPPORTS_TLS
 		sock.tlsdeinit()
 #if PLATFORM_ID<>WM2000
 		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
@@ -317,6 +320,7 @@ sub http_init_request_socket()
 		end if
 		sock.rxclear()
 		sock.txclear()
+#endif
 	end if	
 	i=sys.timercount
 	sock.discard()
@@ -328,13 +332,19 @@ sub http_get_ip_and_port(url as string)
 
 	http_request_list.http_request_in_progress=true
 	dim port as word = http_get_port(url)
-	if left(url, 5)="https" then
-		http_request_list.ssl=true
-		if port=0 then
-			http_request_list.port=443
-		else
-			http_request_list.port=port
-		end if
+	if left(url, 5)="https" then 
+#if SUPPORTS_TLS = 0
+			http_debugprint("Device does not support TLS")
+			http_stop()
+			exit sub
+#else
+			http_request_list.ssl=true
+			if port=0 then
+				http_request_list.port=443
+			else
+				http_request_list.port=port
+			end if
+#endif
 	else
 		http_request_list.ssl=false
 		if port=0 then
@@ -495,7 +505,9 @@ end function
 sub http_set_data(data as string)
 
 	if http_request_list.ssl=true then
+#if SUPPORTS_TLS
 		sock.tlssetdata(data)
+#endif
 	else
 		sock.setdata(data)
 	end if
@@ -505,7 +517,9 @@ end sub
 function http_get_data(size as byte) as string
 
 	if http_request_list.ssl=true then
+#if SUPPORTS_TLS
 		http_get_data=sock.tlsgetdata(size)
+#endif
 	else
 		http_get_data=sock.getdata(size)
 	end if
@@ -515,7 +529,9 @@ end function
 function http_peek_data(size as byte) as string
 
 	if http_request_list.ssl=true then
+#if SUPPORTS_TLS
 		http_peek_data=sock.tlspeekdata(size)
+#endif
 	else
 		http_peek_data=sock.peekdata(size)
 	end if
@@ -572,6 +588,8 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 		exit sub
 	else
 		if http_request_list.ssl=true then
+#if SUPPORTS_TLS
+
 			select case sock.state
 			case PL_SST_EST_AOPENED:
 				dim domain as string = http_request_list.domain_name
@@ -589,6 +607,7 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 			if http_request_list.remaining_content_length>0 then
 				callback_http_send_post_data(http_request_list.remaining_content_length)
 			end if
+#endif
 		end if
 	end if
 	http_request_list.state=REQUEST_SENT	
