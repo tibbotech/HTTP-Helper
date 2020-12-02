@@ -334,8 +334,7 @@ sub http_get_ip_and_port(url as string)
 	dim port as word = http_get_port(url)
 	if left(url, 5)="https" then 
 #if SUPPORTS_TLS = 0
-			http_debugprint("Device does not support TLS")
-			http_stop()
+			http_failed("Device does not support TLS")
 			exit sub
 #else
 			http_request_list.ssl=true
