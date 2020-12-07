@@ -15,13 +15,14 @@ end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
 '	{HTTP_POST, "http://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
-'	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"},
+'	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
+	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"},
 '	{HTTP_GET, "https://images-na.ssl-images-amazon.com/images/G/01/error/174._TTD_.jpg", "", "text/plain", "amazon.cer"},
 '	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
 '	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "text/plain", "ms2.cer"},
 '	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "text/plain", "ms.cer"},
 '	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "text/plain", "ms.cer"},
-	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
+'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 }
 
 sub on_sys_init()
@@ -38,7 +39,8 @@ sub do_test()
 	if test_no < NUM_OF_TESTS AND tests(test_no).url<>"" then
 		sys.debugprint("Test " + str(test_no) + " started\r\n")
 		dim test as http_test = tests(test_no)
-		http_request_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type,2,10)
+		http_request_long_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,510,test.content_type,20,20)
+'		http_request_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type,2,10)
 	else
 		sys.debugprint("Tests ended\r\n")
 		dim i as byte = 0
@@ -80,7 +82,12 @@ dim romfile_opened as boolean=false
 
 sub callback_http_send_post_data(remaining_content_length as dword)
 
-	dim s as string = "data="+http_encode_url("data 1/.")
+	dim c as byte
+	dim s as string 
+	for c=0 to 254
+		s=s+"x"
+	next c
+'  	dim s as string = "data="+http_encode_url("data 1/.")
 	dim b as byte = http_send_post_data(s)
 	
 end sub

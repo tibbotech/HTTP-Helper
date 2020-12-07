@@ -1,16 +1,16 @@
 [project]
 version=1
-platform=TPP3W(G2)
+platform=WM2000
 src_lib_ver=2_01_04
 name=HTTP-Helper
 output=HTTP-Helper.tpc
 debug=on
-defines= /dWLN_WPA=1 /dWLN_AVAILABLE=1 /dOBJECT_FD=FD_DISABLED /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1 /dOBJECT_WLN=WLN_ENABLED
-transport=udp_winpcap
+defines= /dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dWLN_WPA=1 /dOBJECT_LCD=LCD_ENABLED /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dOBJECT_FD=FD_DISABLED /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1 /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED
+transport=udp_broadcast
 [address1]
 platform=TPP3W(G2)
 transport=udp_broadcast
-address=
+address=0.36.119.82.191.221
 [address2]
 platform=TPP3W(G2)
 transport=udp_winpcap
@@ -31,6 +31,22 @@ address=COM7:921600
 platform=EM510W
 transport=udp_winpcap
 address=0.36.119.82.191.221
+[address7]
+platform=EM2000W
+transport=udp_broadcast
+address=0.36.119.82.191.221
+[address8]
+platform=DS1100
+transport=udp_broadcast
+address=0.36.119.82.191.221
+[address9]
+platform=TPP2W(G2)
+transport=udp_broadcast
+address=156.101.249.54.101.28
+[address10]
+platform=WM2000
+transport=udp_broadcast
+address=156.101.249.54.101.28
 [file1]
 path=global.tbh
 type=header

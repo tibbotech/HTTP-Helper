@@ -83,7 +83,7 @@ declare function http_get_path(url as string) as string
 declare function http_get_data(size as byte) as string
 declare function http_check_socket_list() as ok_ng
 declare function http_get_domain_name(url as string) as string
-declare function http_send_post_data(data as string) as byte
+declare function http_send_post_data(data as string) as word
 declare function http_encode_url(unencoded_url as string) as string
 declare function http_get_port(url as string) as word
 declare function http_peek_data(size as byte) as string

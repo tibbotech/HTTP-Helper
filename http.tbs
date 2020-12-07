@@ -60,7 +60,6 @@ sub http_get_headers()
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
 		if http_request_list.ssl then
 #if SUPPORTS_TLS
-				sock.tlspeekdata(1)
 				if sock.tlspeeklen = 0 then
 					exit sub
 				end if
@@ -480,15 +479,19 @@ sub http_debugprint(byref print_data as string)
 end sub
 
 
-function http_send_post_data(data as string) as byte
+function http_send_post_data(data as string) as word
 	
 	if http_check_socket_list()=NG then
 		exit function
 	end if
-	if sock.txfree>255 then
-		http_send_post_data=255
+	if http_request_list.ssl=true then
+		http_send_post_data = sock.tlssetdata(data)
 	else
-		http_send_post_data=sock.txfree
+		if sock.txfree>len(data) then
+			http_send_post_data=len(data)
+		else
+			http_send_post_data=sock.txfree
+		end if
 	end if
 	if http_request_list.remaining_content_length<=http_send_post_data then
 		http_send_post_data=http_request_list.remaining_content_length
@@ -498,7 +501,7 @@ function http_send_post_data(data as string) as byte
 	http_set_data(data)
 	sock.notifysent(0)
 	sock.send()		
-	
+	sys.debugprint("Remaining data length: " + str(http_request_list.remaining_content_length) +"\r\n")
 end function
 
 sub http_set_data(data as string)
@@ -592,7 +595,7 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 			case PL_SST_EST_AOPENED:
 				dim domain as string = http_request_list.domain_name
 				sock.tlshandshake(domain)
-			case PL_TLS_EST:
+			case PL_SST_TLS_EST:
 				http_set_data(http_request_list.request)
 				sock.send()
 				if http_request_list.method=HTTP_POST and http_request_list.remaining_content_length>0 then
