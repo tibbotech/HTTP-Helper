@@ -1,11 +1,11 @@
 [project]
 version=1
-platform=WM2000
+platform=TPP3W
 src_lib_ver=2_01_04
 name=HTTP-Helper
 output=HTTP-Helper.tpc
 debug=on
-defines= /dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dWLN_WPA=1 /dOBJECT_LCD=LCD_ENABLED /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dOBJECT_FD=FD_DISABLED /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1 /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED
+defines=/dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dOBJECT_LCD=LCD_ENABLED /dOBJECT_FD=FD_DISABLED /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED /dWLN_WPA=1 /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1
 transport=udp_broadcast
 [address1]
 platform=TPP3W(G2)
@@ -46,7 +46,11 @@ address=156.101.249.54.101.28
 [address10]
 platform=WM2000
 transport=udp_broadcast
-address=156.101.249.54.101.28
+address=0.101.249.54.101.44
+[address11]
+platform=TPP3W
+transport=udp_broadcast
+address=0.36.119.81.79.1
 [file1]
 path=global.tbh
 type=header
@@ -194,3 +198,10 @@ format=
 condition=
 locked=yes
 location=commonlib
+[file22]
+path=azure.cer
+type=binary
+format=
+condition=
+locked=no
+location=project

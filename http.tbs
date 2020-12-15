@@ -485,7 +485,9 @@ function http_send_post_data(data as string) as word
 		exit function
 	end if
 	if http_request_list.ssl=true then
+	#if SUPPORTS_TLS
 		http_send_post_data = sock.tlssetdata(data)
+	#endif
 	else
 		if sock.txfree>len(data) then
 			http_send_post_data=len(data)
