@@ -65,7 +65,7 @@ type http_request_type
 	ip as string(15)
 	ssl as boolean
 	request as string(HTTP_MAX_REQ_LEN)
-	remaining_response_content_length as word
+	remaining_response_content_length as dword
 	remaining_content_length as dword
 	chunked as boolean
 	method as HTTP_REQUEST_METHODS

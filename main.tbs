@@ -14,7 +14,9 @@ type http_test
 end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
-	{HTTP_POST, "http://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
+'	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "text/plain", "azure.cer"},
+'	{HTTP_POST, "https://shopee.tw/", "", "text/plain", "shopee.cer"},
+'	{HTTP_POST, "http://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
 '	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "text/plain", "azure.cer"},
 '	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
 '	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"},
@@ -23,7 +25,7 @@ dim tests as http_test(NUM_OF_TESTS) = {
 '	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "text/plain", "ms2.cer"},
 '	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "text/plain", "ms.cer"},
 '	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "text/plain", "ms.cer"},
-'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
+	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 }
 
 sub on_sys_init()
@@ -31,6 +33,10 @@ sub on_sys_init()
 		dhcp_start(HTTP_REQUEST_INTERFACE,"","")
 	#endif
 
+'	wln.autoconnect=YES
+'	wln.autodhcp=YES
+'	wln.autoconnectssid="Tibbo9F"
+'	wln.autoconnectpassword="16836836"
 	dns_start(sock_get("DNS"))	
 end sub
 

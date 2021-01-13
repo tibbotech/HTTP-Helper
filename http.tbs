@@ -1,12 +1,12 @@
 include "global.tbh"
 
-const HTTP_TLS_BUFF_PAGES=39
+const HTTP_TLS_BUFF_PAGES=40
 
 dim http_start_called as boolean=false
 dim http_methods(6) as string(7) = {"GET", "HEAD", "POST", "PUT", "DELETE", "PATCH"}
 dim http_request_list as http_request_type
 dim http_timer_count as word = 0
-dim http_chunk_length as word = 0
+dim http_chunk_length as dword = 0
 
 declare sub http_failed(byref error_message as string)
 
@@ -59,8 +59,8 @@ sub http_get_headers()
 	dim http_reply, next_byte as string
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
 		if http_request_list.ssl then
-#if SUPPORTS_TLS
-				if sock.tlspeeklen = 0 then
+#if TLS_AVAILABLE
+				if sock.tlsrxlen = 0 then
 					exit sub
 				end if
 #endif
@@ -97,7 +97,7 @@ sub http_get_headers()
 				http_parse_headers(header_type)
 				http_parse_headers(header_value)
 				if header_type="content-length" then
-					http_request_list.remaining_response_content_length=val(header_value)
+					http_request_list.remaining_response_content_length=lval(header_value)
 					http_chunk_length = http_request_list.remaining_response_content_length
 				end if
 				if header_type="transfer-encoding" then
@@ -138,7 +138,7 @@ sub http_get_content()
 		data=http_get_data(http_request_list.remaining_response_content_length)
 	end if
 	if len(data) > 0 then
-		http_debugprint(str(http_request_list.remaining_response_content_length) + "/" + str(http_chunk_length))
+		http_debugprint(lstr(http_request_list.remaining_response_content_length) + "/" + lstr(http_chunk_length))
 		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
 		http_debugprint(data)
@@ -179,7 +179,7 @@ function http_get_chunk_length() as ok_ng
 		exit function
 	end if
 	chunk_length="&h"+chunk_length
-	http_request_list.remaining_response_content_length=val(chunk_length)
+	http_request_list.remaining_response_content_length=lval(chunk_length)
 	http_chunk_length = http_request_list.remaining_response_content_length
 	
 end function
@@ -306,7 +306,7 @@ sub http_init_request_socket()
 	end if
 	sys.buffalloc()	 
 	if http_request_list.ssl=true then
-#if SUPPORTS_TLS
+#if TLS_AVAILABLE
 		sock.tlsdeinit()
 #if PLATFORM_ID<>WM2000
 		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
@@ -332,7 +332,7 @@ sub http_get_ip_and_port(url as string)
 	http_request_list.http_request_in_progress=true
 	dim port as word = http_get_port(url)
 	if left(url, 5)="https" then 
-#if SUPPORTS_TLS = 0
+#if TLS_AVAILABLE = 0
 			http_failed("Device does not support TLS")
 			exit sub
 #else
@@ -485,7 +485,7 @@ function http_send_post_data(data as string) as word
 		exit function
 	end if
 	if http_request_list.ssl=true then
-	#if SUPPORTS_TLS
+	#if TLS_AVAILABLE
 		http_send_post_data = sock.tlssetdata(data)
 	#endif
 	else
@@ -509,7 +509,7 @@ end function
 sub http_set_data(data as string)
 
 	if http_request_list.ssl=true then
-#if SUPPORTS_TLS
+#if TLS_AVAILABLE
 		sock.tlssetdata(data)
 #endif
 	else
@@ -521,7 +521,7 @@ end sub
 function http_get_data(size as byte) as string
 
 	if http_request_list.ssl=true then
-#if SUPPORTS_TLS
+#if TLS_AVAILABLE
 		http_get_data=sock.tlsgetdata(size)
 #endif
 	else
@@ -533,7 +533,7 @@ end function
 function http_peek_data(size as byte) as string
 
 	if http_request_list.ssl=true then
-#if SUPPORTS_TLS
+#if TLS_AVAILABLE
 		http_peek_data=sock.tlspeekdata(size)
 #endif
 	else
@@ -592,12 +592,12 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 		exit sub
 	else
 		if http_request_list.ssl=true then
-#if SUPPORTS_TLS
+#if TLS_AVAILABLE
 			select case sock.state
 			case PL_SST_EST_AOPENED:
 				dim domain as string = http_request_list.domain_name
 				sock.tlshandshake(domain)
-			case PL_SST_TLS_EST:
+			case PL_SST_EST_TLS:
 				http_set_data(http_request_list.request)
 				sock.send()
 				if http_request_list.method=HTTP_POST and http_request_list.remaining_content_length>0 then

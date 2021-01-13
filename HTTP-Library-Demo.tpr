@@ -1,12 +1,12 @@
 [project]
 version=1
-platform=TPP3W
+platform=TPP3W(G2)
 src_lib_ver=2_01_04
 name=HTTP-Helper
 output=HTTP-Helper.tpc
 debug=on
-defines=/dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dOBJECT_LCD=LCD_ENABLED /dOBJECT_FD=FD_DISABLED /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED /dWLN_WPA=1 /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1
-transport=udp_broadcast
+defines= /dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dWLN_WPA=1 /dOBJECT_LCD=LCD_ENABLED /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dOBJECT_FD=FD_DISABLED /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1 /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED
+transport=udp_winpcap
 [address1]
 platform=TPP3W(G2)
 transport=udp_broadcast
@@ -14,7 +14,7 @@ address=0.36.119.82.191.221
 [address2]
 platform=TPP3W(G2)
 transport=udp_winpcap
-address=0.36.119.82.191.221
+address=0.24.77.12.10.46
 [address3]
 platform=TPP2W(G2)
 transport=udp_winpcap
@@ -26,11 +26,11 @@ address=156.101.249.54.101.26
 [address5]
 platform=WM2000
 transport=serial
-address=COM7:921600
+address=COM10:921600
 [address6]
 platform=EM510W
 transport=udp_winpcap
-address=0.36.119.82.191.221
+address=COM10:921600
 [address7]
 platform=EM2000W
 transport=udp_broadcast
@@ -196,10 +196,17 @@ path=dns\trunk\dns.tbs
 type=basic
 format=
 condition=
-locked=yes
+locked=no
 location=commonlib
 [file22]
 path=azure.cer
+type=binary
+format=
+condition=
+locked=no
+location=project
+[file23]
+path=shopee.cer
 type=binary
 format=
 condition=
