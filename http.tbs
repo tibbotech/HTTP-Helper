@@ -8,7 +8,13 @@ dim http_request_list as http_request_type
 dim http_timer_count as word = 0
 dim http_chunk_length as dword = 0
 
-declare sub http_failed(byref error_message as string)
+sub http_debugprint(byref print_data as string) 
+	
+	#if HTTP_DEBUG_PRINT 
+		sys.debugprint(HTTP_STAMP + left(print_data,HTTP_MAX_DATA_LENGTH) + HTTP_CR_LF)
+	#endif
+
+end sub
 
 sub http_start()
 	
@@ -37,16 +43,56 @@ sub http_stop()
 	
 end sub
 
-sub http_proc_data()
+function http_check_socket_list() as ok_ng
+	
+	http_check_socket_list=NG
+	if http_request_list.socket=sock.num and sock.num<>255 then
+		http_check_socket_list=ok
+	end if	
+	
+end function
 
-	if http_start_called=false then		
-		exit sub
-	end if		
-	if http_check_socket_list()=NG then
-		exit sub
-	end if 
-	http_get_headers()
-	http_get_content()
+function http_get_data(size as byte) as string
+
+	if http_request_list.ssl=true then
+#if TLS_AVAILABLE
+		http_get_data=sock.tlsgetdata(size)
+#endif
+	else
+		http_get_data=sock.getdata(size)
+	end if
+	
+end function
+
+sub http_to_lower_case(byref input_string as string) 
+	
+	dim b as byte
+	dim current_character as string(1)
+	dim modified_string as string
+	for b=1 to len(input_string)
+		current_character = (mid(input_string,b,1))
+		dim b as byte=asc(current_character)
+		if asc(current_character)>64 and asc(current_character)<91 then
+			current_character=chr(asc(current_character)+32)
+		end if
+		modified_string=modified_string+current_character
+	next b
+	input_string=modified_string
+
+end sub
+
+sub http_remove_leading_whitespace(byref input_string as string)
+
+	if asc(left(input_string,1))=32 then
+		input_string=right(input_string,len(input_string)-1)
+	end if
+	
+end sub
+
+sub http_parse_headers(byref input_string as string)
+	
+	http_to_lower_case(input_string) 
+	http_remove_leading_whitespace(input_string)
 
 end sub
 
@@ -114,42 +160,17 @@ sub http_get_headers()
 	
 end sub
 
-sub http_get_content() 
-	
-	if http_request_list.state<>HTTP_HEADERS_PROCESSED then
-		exit sub
-	end if
-	http_timer_count=0
-	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
-		if http_get_chunk_length()=NG then
-			exit sub
-		else 
-			http_debugprint("Chunk complete")
-		end if		
-	end if
-	if http_request_list.remaining_response_content_length=0 then
-		http_request_list.chunked=false
-		http_request_complete()
-	end if	
-	dim data as string
-	if http_request_list.remaining_response_content_length>HTTP_MAX_DATA_LENGTH then
-		data=http_get_data(HTTP_MAX_DATA_LENGTH)
+function http_peek_data(size as byte) as string
+
+	if http_request_list.ssl=true then
+#if TLS_AVAILABLE
+		http_peek_data=sock.tlspeekdata(size)
+#endif
 	else
-		data=http_get_data(http_request_list.remaining_response_content_length)
-	end if
-	if len(data) > 0 then
-		http_debugprint(lstr(http_request_list.remaining_response_content_length) + "/" + lstr(http_chunk_length))
-		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
-		callback_http_content_arrival(data)
-		http_debugprint(data)
-		if http_request_list.chunked=false then
-			if http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD then
-				http_request_complete()
-			end if	
-		end if	
+		http_peek_data=sock.peekdata(size)
 	end if
 	
-end sub
+end function
 
 function http_get_chunk_length() as ok_ng
 	http_get_chunk_length = NG
@@ -194,12 +215,149 @@ sub http_request_complete()
 
 end sub
 
+sub http_get_content() 
+	
+	if http_request_list.state<>HTTP_HEADERS_PROCESSED then
+		exit sub
+	end if
+	http_timer_count=0
+	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
+		if http_get_chunk_length()=NG then
+			exit sub
+		else 
+			http_debugprint("Chunk complete")
+		end if		
+	end if
+	if http_request_list.remaining_response_content_length=0 then
+		http_request_list.chunked=false
+		http_request_complete()
+	end if	
+	dim data as string
+	if http_request_list.remaining_response_content_length>HTTP_MAX_DATA_LENGTH then
+		data=http_get_data(HTTP_MAX_DATA_LENGTH)
+	else
+		data=http_get_data(http_request_list.remaining_response_content_length)
+	end if
+	if len(data) > 0 then
+		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
+		callback_http_content_arrival(data)
+		http_debugprint(data)
+	
+		#if HTTP_DEBUG_PRINT 
+		dim bytes_received as dword=http_chunk_length - http_request_list.remaining_response_content_length
+		if http_request_list.chunked=false then
+			http_debugprint(lstr(bytes_received) + " out of " + lstr(http_chunk_length)  + " bytes received\t" + lstr((bytes_received*100)/http_chunk_length) + "%")
+		else
+			http_debugprint(lstr(bytes_received) + " out of " + lstr(http_chunk_length)  + " bytes in current chunk received\t" + lstr((bytes_received*100)/http_chunk_length) + "%")
+		end if	
+		#endif
+		if http_request_list.chunked=false and (http_request_list.remaining_response_content_length=0 or http_request_list.method=HTTP_HEAD) then
+			http_request_complete()
+		end if
+	end if
+	
+end sub
+
+sub http_proc_data()
+
+	if http_start_called=false then		
+		exit sub
+	end if		
+	if http_check_socket_list()=NG then
+		exit sub
+	end if 
+	http_get_headers()
+	http_get_content()
+
+end sub
+
 sub http_reset_socket()
 
 	http_request_list.dns_request_in_progress=false
 	http_request_list.http_request_in_progress=false
 	http_request_list.state=FREE 
 	
+end sub
+
+function http_get_domain_name(url as string) as string
+	
+	dim b as byte
+	if left(url, 4)="http" then
+		b=instr(1,url,"/",2)
+		url=right(url,len(url)-b)
+	end if	
+	b=instr(1,url,"/",1)
+	http_get_domain_name=left(url,b-1)	
+	b=instr(1,url,":",1)
+	if b>0 then
+		dim port_segment as string=right(url,len(url)-b)
+		http_get_domain_name=left(url,b-1)
+		b=instr(1,port_segment,"/",1)
+		if b>0 then
+			port_segment=left(port_segment,b-1)
+		end if
+		http_request_list.port=port_segment
+	end if
+	http_request_list.domain_name=http_get_domain_name
+		
+end function
+
+sub http_failed(byref error_message as string)
+
+	http_reset_socket()
+	http_debugprint("Failed reason:" + error_message)
+	callback_http_request_failed(error_message)
+	
+end sub
+
+sub http_init_request_socket()
+	dim dns_socket as byte=sock.num
+	dim sock_error as boolean = false
+
+	if http_request_list.txbuffrq=0 then
+		http_request_list.txbuffrq=2
+	end if
+	if http_request_list.rxbuffrq=0 then
+		http_request_list.rxbuffrq=2
+	end if 
+	sock.num=http_request_list.socket
+	sock.connectiontout=HTTP_TIMEOUT
+	sock.targetip=http_request_list.ip
+	sock.protocol=PL_SOCK_PROTOCOL_TCP
+	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
+	sock.targetport=http_request_list.port
+	sock.allowedinterfaces = sock.availableinterfaces	
+	sock.targetinterface=http_request_list.interface
+	if sock.txbuffrq(http_request_list.txbuffrq) <> http_request_list.txbuffrq then
+		http_failed("Not enough space in TX buffer")
+		sock_error=true
+	end if
+	if sock.rxbuffrq(http_request_list.rxbuffrq) <> http_request_list.rxbuffrq  then
+		http_failed("Not enough space in RX buffer")
+		sock_error=true
+	end if
+	sys.buffalloc()	 
+	if http_request_list.ssl=true then
+#if TLS_AVAILABLE
+		sock.tlsdeinit()
+#if PLATFORM_ID<>WM2000
+		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
+#endif
+		sys.buffalloc
+		callback_http_open_romfile()
+		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
+			http_failed("Error loading certificate")
+			sock_error=true
+		end if
+		sock.rxclear()
+		sock.txclear()
+#endif
+	end if	
+	if sock_error=false then
+		sock.discard()
+		sock.connect()
+	end if
+	sock.num=dns_socket
 end sub
 
 sub http_dns_query(url as string)
@@ -232,129 +390,6 @@ sub http_dns_query(url as string)
 		
 end sub
 
-sub http_proc_timer()
-
-	if http_start_called=false then		
-		exit sub
-	end if
-	http_check_dns_queue()
-	if http_request_list.state > DNS_COMPLETE then
-		http_timer_count = http_timer_count + 1
-		if http_timer_count > HTTP_TIMEOUT then
-			http_failed("Timeout")
-		end if
-	end if
-	
-	
-end sub
-
-function http_get_domain_name(url as string) as string
-'Returns the domain name section of a given URL
-	
-	dim b as byte
-	if left(url, 4)="http" then
-		b=instr(1,url,"/",2)
-		url=right(url,len(url)-b)
-	end if	
-	b=instr(1,url,"/",1)
-	http_get_domain_name=left(url,b-1)	
-	b=instr(1,url,":",1)
-	if b>0 then
-		dim port_segment as string=right(url,len(url)-b)
-		http_get_domain_name=left(url,b-1)
-		b=instr(1,port_segment,"/",1)
-		if b>0 then
-			port_segment=left(port_segment,b-1)
-		end if
-		http_request_list.port=port_segment
-	end if
-	http_request_list.domain_name=http_get_domain_name
-		
-end function
-
-function http_get_path(url as string) as string
-'Returns the path section of a given URL
-
-	dim b as byte=instr(1,url,"/",3)
-	http_get_path=right(url,len(url)-b+1)
-		
-end function
-
-sub http_init_request_socket()
-	dim i as word
-	if http_request_list.txbuffrq=0 then
-		http_request_list.txbuffrq=2
-	end if
-	if http_request_list.rxbuffrq=0 then
-		http_request_list.rxbuffrq=2
-	end if 
-	sock.num=http_request_list.socket
-	sock.connectiontout=HTTP_TIMEOUT
-	sock.targetip=http_request_list.ip
-	sock.protocol=PL_SOCK_PROTOCOL_TCP
-	sock.inconmode= PL_SOCK_INCONMODE_ANY_IP_ANY_PORT
-	sock.targetport=http_request_list.port
-	sock.allowedinterfaces = sock.availableinterfaces	
-	sock.targetinterface=http_request_list.interface
-	if sock.txbuffrq(http_request_list.txbuffrq) <> http_request_list.txbuffrq then
-		http_failed("Not enough space in TX buffer")
-		exit sub
-	end if
-	if sock.rxbuffrq(http_request_list.rxbuffrq) <> http_request_list.rxbuffrq  then
-		http_failed("Not enough space in RX buffer")
-		exit sub
-	end if
-	sys.buffalloc()	 
-	if http_request_list.ssl=true then
-#if TLS_AVAILABLE
-		sock.tlsdeinit()
-#if PLATFORM_ID<>WM2000
-		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
-#endif
-		sys.buffalloc
-		callback_http_open_romfile()
-		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
-			http_failed("Error loading certificate")
-			exit sub
-		end if
-		sock.rxclear()
-		sock.txclear()
-#endif
-	end if	
-	i=sys.timercount
-	sock.discard()
-	sock.connect()
-
-end sub
-
-sub http_get_ip_and_port(url as string)
-
-	http_request_list.http_request_in_progress=true
-	dim port as word = http_get_port(url)
-	if left(url, 5)="https" then 
-#if TLS_AVAILABLE = 0
-			http_failed("Device does not support TLS")
-			exit sub
-#else
-			http_request_list.ssl=true
-			if port=0 then
-				http_request_list.port=443
-			else
-				http_request_list.port=port
-			end if
-#endif
-	else
-		http_request_list.ssl=false
-		if port=0 then
-			http_request_list.port=80
-		else
-			http_request_list.port=port
-		end if
-	end if
-	http_dns_query(http_request_list.domain_name)	
-	
-end sub
-
 function http_get_port(url as string) as word
 
 	dim port_segment as string
@@ -368,6 +403,67 @@ function http_get_port(url as string) as word
 	else 
 		http_get_port=0
 	end if
+		
+end function
+
+sub http_get_ip_and_port(url as string)
+
+	http_request_list.http_request_in_progress=true
+	dim port as word = http_get_port(url)
+	if left(url, 5)="https" then 
+#if TLS_AVAILABLE
+		http_request_list.ssl=true
+		if port=0 then
+			http_request_list.port=443
+		else
+			http_request_list.port=port
+		end if
+#else
+		http_failed("Device does not support TLS")
+		exit sub			
+#endif
+	else
+		http_request_list.ssl=false
+		if port=0 then
+			http_request_list.port=80
+		else
+			http_request_list.port=port
+		end if
+	end if
+	http_dns_query(http_request_list.domain_name)	
+	
+end sub
+
+sub http_check_dns_queue()
+
+	if http_request_list.http_request_in_progress=true then
+		exit sub
+	end if
+	if http_request_list.state=DNS_NOT_COMPLETE then
+		http_get_ip_and_port(http_request_list.url)
+	end if		
+	
+end sub
+
+sub http_proc_timer()
+
+	if http_start_called=false then		
+		exit sub
+	end if
+	http_check_dns_queue()
+	if http_request_list.state>DNS_REQUEST_SENT then
+		http_timer_count = http_timer_count + 1
+		if http_timer_count > HTTP_TIMEOUT then
+			http_failed("Timeout")
+		end if
+	end if	
+	
+end sub
+
+function http_get_path(url as string) as string
+
+	dim b as byte=instr(1,url,"/",3)
+	http_get_path=right(url,len(url)-b+1)
 		
 end function
 
@@ -442,42 +538,31 @@ end function
 
 sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
-	if(return_type=EN_DNS_RET_IP) then
-		http_request_list.ip=ddstr(return_string)
+	if http_request_list.state=DNS_REQUEST_SENT then		
+		if dns_current_domain() = http_request_list.domain_name then
+			if(return_type=EN_DNS_RET_IP) then
+				http_request_list.ip=ddstr(return_string)
+				http_request_list.dns_request_in_progress=false
+				http_request_list.state=DNS_COMPLETE
+				http_init_request_socket()
+				http_check_dns_queue()
+			end if
+		end if		
 	end if
 	
 end sub
 
-sub http_dns_ok()
-	if http_request_list.domain_name<>dns_current_domain() then
-		exit sub
+sub http_set_data(data as string)
+
+	if http_request_list.ssl=true then
+#if TLS_AVAILABLE
+		sock.tlssetdata(data)
+#endif
+	else
+		sock.setdata(data)
 	end if
-	http_request_list.dns_request_in_progress=false
-	http_request_list.state=DNS_COMPLETE
-	http_init_request_socket()
-	http_check_dns_queue()
-
-end sub
-
-sub http_check_dns_queue()
-
-	if http_request_list.http_request_in_progress=true then
-		exit sub
-	end if
-	if http_request_list.state=DNS_NOT_COMPLETE then
-		http_get_ip_and_port(http_request_list.url)
-	end if		
 	
 end sub
-
-sub http_debugprint(byref print_data as string) 
-	
-	#if HTTP_DEBUG_PRINT 
-		sys.debugprint(HTTP_STAMP + left(print_data,HTTP_MAX_DATA_LENGTH) + HTTP_CR_LF)
-	#endif
-
-end sub
-
 
 function http_send_post_data(data as string) as word
 	
@@ -506,42 +591,6 @@ function http_send_post_data(data as string) as word
 	sys.debugprint("Remaining data length: " + str(http_request_list.remaining_content_length) +"\r\n")
 end function
 
-sub http_set_data(data as string)
-
-	if http_request_list.ssl=true then
-#if TLS_AVAILABLE
-		sock.tlssetdata(data)
-#endif
-	else
-		sock.setdata(data)
-	end if
-	
-end sub
-
-function http_get_data(size as byte) as string
-
-	if http_request_list.ssl=true then
-#if TLS_AVAILABLE
-		http_get_data=sock.tlsgetdata(size)
-#endif
-	else
-		http_get_data=sock.getdata(size)
-	end if
-	
-end function
-
-function http_peek_data(size as byte) as string
-
-	if http_request_list.ssl=true then
-#if TLS_AVAILABLE
-		http_peek_data=sock.tlspeekdata(size)
-#endif
-	else
-		http_peek_data=sock.peekdata(size)
-	end if
-	
-end function
-
 function http_encode_url(unencoded_url as string) as string
  
 	dim i, j, n as byte
@@ -560,15 +609,6 @@ function http_encode_url(unencoded_url as string) as string
 			next j
 		end if
 	next
-	
-end function
-
-function http_check_socket_list() as ok_ng
-	
-	http_check_socket_list=NG
-	if http_request_list.socket=sock.num and sock.num<>255 then
-		http_check_socket_list=ok
-	end if	
 	
 end function
 
@@ -629,42 +669,4 @@ sub http_on_sock_data_sent()
 		http_debugprint("HTTP Post Data Sent")
 	end if
 	
-end sub
-
-sub http_parse_headers(byref input_string as string)
-	
-	http_to_lower_case(input_string) 
-	http_remove_leading_whitespace(input_string)
-
-end sub
-
-sub http_to_lower_case(byref input_string as string) 
-	
-	dim b as byte
-	dim current_character as string(1)
-	dim modified_string as string
-	for b=1 to len(input_string)
-		current_character = (mid(input_string,b,1))
-		dim b as byte=asc(current_character)
-		if asc(current_character)>64 and asc(current_character)<91 then
-			current_character=chr(asc(current_character)+32)
-		end if
-		modified_string=modified_string+current_character
-	next b
-	input_string=modified_string
-
-end sub
-
-sub http_remove_leading_whitespace(byref input_string as string)
-
-	if asc(left(input_string,1))=32 then
-		input_string=right(input_string,len(input_string)-1)
-	end if
-	
-end sub
-
-sub http_failed(byref error_message as string)
-	http_reset_socket()
-	http_debugprint("Failed reason:" + error_message)
-	callback_http_request_failed(error_message)
 end sub

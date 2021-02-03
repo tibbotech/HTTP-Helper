@@ -79,38 +79,15 @@ declare function http_request(method as HTTP_REQUEST_METHODS, byref url as strin
 declare function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
 declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string) as byte
 declare function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-declare function http_get_path(url as string) as string
-declare function http_get_data(size as byte) as string
-declare function http_check_socket_list() as ok_ng
-declare function http_get_domain_name(url as string) as string
-declare function http_send_post_data(data as string) as word
 declare function http_encode_url(unencoded_url as string) as string
-declare function http_get_port(url as string) as word
-declare function http_peek_data(size as byte) as string
 
 declare sub http_start()
-declare sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
-declare sub http_debugprint(byref print_data as string) 
-declare sub http_proc_data()
-declare sub http_get_headers()
-declare sub http_get_content()
-declare sub http_init_request_socket()
-declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
-declare sub http_dns_query(url as string)
-declare sub http_set_data(data as string)
-declare sub http_on_sock_data_sent()
-declare sub http_check_dns_queue()
 declare sub http_stop()
-declare sub http_request_complete()
-declare function http_get_chunk_length() as ok_ng
-declare sub http_to_lower_case(byref input_string as string) 
-declare sub http_remove_leading_whitespace(byref input_string as string)
-declare sub http_parse_headers(byref input_string as string)
-
-
+declare sub http_proc_data()
+declare sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
+declare sub http_on_sock_data_sent()
 declare sub http_proc_timer()
 declare sub http_dns_failure()
-declare sub http_dns_ok()
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 
 declare sub callback_http_open_romfile()
