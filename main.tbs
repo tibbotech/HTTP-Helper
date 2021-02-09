@@ -60,13 +60,16 @@ sub do_test()
 end sub
 
 
-sub callback_http_open_romfile()
+function callback_http_open_romfile() as dword
 	
 	if tests(test_no).cert <> "" then
 		romfile.open(tests(test_no).cert)
+		callback_http_open_romfile=romfile.offset
+	else
+		callback_http_open_romfile=0
 	end if
 
-end sub
+end function
 
 sub on_sock_data_arrival()
 

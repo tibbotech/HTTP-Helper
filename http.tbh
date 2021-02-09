@@ -98,7 +98,8 @@ declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref re
 declare sub callback_http_send_headers()
 declare sub http_send_headers(header_name as string, header_value as string)
 
-declare sub callback_http_open_romfile()
+declare function callback_http_open_romfile() as dword
+'open the romfile that contains the certificate for the current domain
 declare sub callback_http_header_arrival(header_type as string, header_value as string)
 declare sub callback_http_content_arrival(data as string)
 declare sub callback_http_send_post_data(remaining_content_length as dword)

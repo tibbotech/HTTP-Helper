@@ -349,8 +349,7 @@ sub http_init_request_socket()
 		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
 #endif
 		sys.buffalloc
-		callback_http_open_romfile()
-		if sock.tlsinit(romfile.offset)<>PL_TLS_SUCCESS then
+		if sock.tlsinit(callback_http_open_romfile())<>PL_TLS_SUCCESS then
 			http_failed("Error loading certificate")
 			sock_error=true
 		end if
