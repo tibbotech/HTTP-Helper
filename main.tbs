@@ -8,30 +8,29 @@ type http_test
 	method as HTTP_REQUEST_METHODS
 	url as string
 	data as string
-	content_type as string
 	cert as string
 	result as string
 end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
-'	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "text/plain", "azure.cer"},
-'	{HTTP_POST, "https://shopee.tw/", "", "text/plain", "shopee.cer"},
-'	{HTTP_POST, "http://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
-'	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "text/plain", "azure.cer"},
-'	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "text/plain", "httpbin.cer"},
-'	{HTTP_GET, "https://www.amazon.com/", "", "text/plain", "amazon.cer"},
-'	{HTTP_GET, "https://images-na.ssl-images-amazon.com/images/G/01/error/174._TTD_.jpg", "", "text/plain", "amazon.cer"},
-'	{HTTP_GET, "https://www.google.com/", "", "text/plain", "google.cer"},
-'	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "text/plain", "ms2.cer"},
-'	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "text/plain", "ms.cer"},
-'	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "text/plain", "ms.cer"},
-	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "text/plain", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
+'	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "azure.cer"},
+	{HTTP_GET, "https://shopee.tw/", "", "shopee.cer"},
+'	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer"},
+'	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "azure.cer"},
+'	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "httpbin.cer"},
+'	{HTTP_GET, "https://www.amazon.com/", "", "amazon.cer"},
+'	{HTTP_GET, "https://images-na.ssl-images-amazon.com/images/G/01/error/174._TTD_.jpg", "", "amazon.cer"},
+'	{HTTP_GET, "https://www.google.com/", "", "google.cer"},
+'	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "ms2.cer"},
+'	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "ms.cer"},
+'	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "ms.cer"},
+'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 }
 
 sub on_sys_init()
-	#if PLATFORM_ID<>WM2000
+'	#if PLATFORM_ID<>WM2000
 		dhcp_start(HTTP_REQUEST_INTERFACE,"","")
-	#endif
+'	#endif
 
 '	wln.autoconnect=YES
 '	wln.autodhcp=YES
@@ -46,8 +45,8 @@ sub do_test()
 	if test_no < NUM_OF_TESTS AND tests(test_no).url<>"" then
 		sys.debugprint("Test " + str(test_no) + " started\r\n")
 		dim test as http_test = tests(test_no)
-		http_request_long_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,510,test.content_type,2,2)
-'		http_request_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data,test.content_type,2,10)
+'		http_request_long_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,510,test.content_type,2,2)
+		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data)
 	else
 		sys.debugprint("Tests ended\r\n")
 		dim i as byte = 0
@@ -199,8 +198,6 @@ end sub
 
 sub callback_dns_ok()
 
-	http_dns_ok()
-
 end sub
 
 sub callback_dhcp_failure(interface as pl_sock_interfaces,failure_code as en_dhcp_status_codes)	
@@ -254,4 +251,8 @@ end sub
 
 sub on_dhcp_ok(renew as enum no_yes, interface as enum pl_sock_interfaces, ip as string(16), gateway_ip as string(16), netmask as string(16), lease_time as dword)
 	callback_dhcp_ok(renew, interface, ip, gateway_ip, netmask, lease_time)
+end sub
+
+sub callback_http_send_headers()
+	
 end sub

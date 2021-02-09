@@ -5,6 +5,13 @@
 #ifndef HTTP_DNS_SERVER
 	#define HTTP_DNS_SERVER "8.8.8.8"
 #endif
+#ifndef HTTP_TX_BUFF
+	#define HTTP_TX_BUFF 2
+#endif
+
+#ifndef HTTP_RX_BUFF
+	#define HTTP_RX_BUFF 2
+#endif
 
 #ifndef HTTP_TIMEOUT 'in half seconds
 	#define HTTP_TIMEOUT 60
@@ -57,8 +64,10 @@ type http_request_type
 
 	dns_request_in_progress as boolean
 	http_request_in_progress as boolean
+	long_request as boolean
 	state as http_reply_states
 	url as string
+	data as string
 	domain_name as string
 	socket as byte
 	port as word 
@@ -70,16 +79,13 @@ type http_request_type
 	chunked as boolean
 	method as HTTP_REQUEST_METHODS
 	interface as pl_sock_interfaces
-	txbuffrq as byte
-	rxbuffrq as byte
 	
 end type
 
-declare function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string) as byte
-declare function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string) as byte
-declare function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+declare function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string) as byte
+declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
 declare function http_encode_url(unencoded_url as string) as string
+declare function http_send_post_data(data as string) as word
 
 declare sub http_start()
 declare sub http_stop()
@@ -89,6 +95,8 @@ declare sub http_on_sock_data_sent()
 declare sub http_proc_timer()
 declare sub http_dns_failure()
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
+declare sub callback_http_send_headers()
+declare sub http_send_headers(header_name as string, header_value as string)
 
 declare sub callback_http_open_romfile()
 declare sub callback_http_header_arrival(header_type as string, header_value as string)

@@ -52,6 +52,20 @@ function http_check_socket_list() as ok_ng
 	
 end function
 
+sub http_set_data(data as string)
+
+'	while sock.txfree<len(data)
+'	wend		
+	if http_request_list.ssl=true then
+#if TLS_AVAILABLE
+		sock.tlssetdata(data)
+#endif
+	else
+		sock.setdata(data)
+	end if
+	
+end sub
+
 function http_get_data(size as byte) as string
 
 	if http_request_list.ssl=true then
@@ -98,9 +112,6 @@ end sub
 
 sub http_get_headers()
 
-	if http_request_list.state<>REQUEST_SENT then
-		exit sub
-	end if
 	http_timer_count=0
 	dim http_reply, next_byte as string
 	while http_request_list.state<>HTTP_HEADERS_PROCESSED 
@@ -217,9 +228,6 @@ end sub
 
 sub http_get_content() 
 	
-	if http_request_list.state<>HTTP_HEADERS_PROCESSED then
-		exit sub
-	end if
 	http_timer_count=0
 	if http_request_list.chunked=true and http_request_list.remaining_response_content_length=0  then
 		if http_get_chunk_length()=NG then
@@ -242,7 +250,6 @@ sub http_get_content()
 		http_request_list.remaining_response_content_length=http_request_list.remaining_response_content_length-len(data)
 		callback_http_content_arrival(data)
 		http_debugprint(data)
-	
 		#if HTTP_DEBUG_PRINT 
 		dim bytes_received as dword=http_chunk_length - http_request_list.remaining_response_content_length
 		if http_request_list.chunked=false then
@@ -260,14 +267,17 @@ end sub
 
 sub http_proc_data()
 
-	if http_start_called=false then		
+	if http_start_called=false or http_check_socket_list()=NG then		
 		exit sub
 	end if		
-	if http_check_socket_list()=NG then
-		exit sub
-	end if 
-	http_get_headers()
-	http_get_content()
+
+	select case http_request_list.state
+	
+	case REQUEST_SENT:
+		http_get_headers()
+	case HTTP_HEADERS_PROCESSED:
+		http_get_content()
+	end select
 
 end sub
 
@@ -314,12 +324,7 @@ sub http_init_request_socket()
 	dim dns_socket as byte=sock.num
 	dim sock_error as boolean = false
 
-	if http_request_list.txbuffrq=0 then
-		http_request_list.txbuffrq=2
-	end if
-	if http_request_list.rxbuffrq=0 then
-		http_request_list.rxbuffrq=2
-	end if 
+	
 	sock.num=http_request_list.socket
 	sock.connectiontout=HTTP_TIMEOUT
 	sock.targetip=http_request_list.ip
@@ -328,11 +333,11 @@ sub http_init_request_socket()
 	sock.targetport=http_request_list.port
 	sock.allowedinterfaces = sock.availableinterfaces	
 	sock.targetinterface=http_request_list.interface
-	if sock.txbuffrq(http_request_list.txbuffrq) <> http_request_list.txbuffrq then
+	if sock.txbuffrq(HTTP_TX_BUFF) <> HTTP_TX_BUFF then
 		http_failed("Not enough space in TX buffer")
 		sock_error=true
 	end if
-	if sock.rxbuffrq(http_request_list.rxbuffrq) <> http_request_list.rxbuffrq  then
+	if sock.rxbuffrq(HTTP_RX_BUFF) <> HTTP_RX_BUFF then
 		http_failed("Not enough space in RX buffer")
 		sock_error=true
 	end if
@@ -358,15 +363,16 @@ sub http_init_request_socket()
 		sock.connect()
 	end if
 	sock.num=dns_socket
+	
 end sub
 
-sub http_dns_query(url as string)
+sub http_start_request()
 	
 	dim is_ip_address as boolean=true
 	dim b as byte
 	while is_ip_address=true 
-		for b=1 to len(url)
-			dim s as string=mid(url,b,1)
+		for b=1 to len(http_request_list.url)
+			dim s as string=mid(http_request_list.url,b,1)
 			dim ascii as word=asc(s)
 			if ascii>=46 and ascii<=57 then
 			else
@@ -375,7 +381,7 @@ sub http_dns_query(url as string)
 			end if
 		next b
 		if is_ip_address=true then
-			http_request_list.ip=url
+			http_request_list.ip=http_request_list.url
 			http_request_list.state=DNS_REQUEST_SENT
 			http_request_list.dns_request_in_progress=false
 			http_request_list.state=DNS_COMPLETE
@@ -385,43 +391,38 @@ sub http_dns_query(url as string)
 	wend
 	http_request_list.dns_request_in_progress=true
 	dns_connect(http_request_list.interface, HTTP_DNS_SERVER, 0)
-	dns_query(http_get_domain_name(url))
+	dns_query(http_get_domain_name(http_request_list.url))
 	http_request_list.state=DNS_REQUEST_SENT
 		
 end sub
 
-function http_get_port(url as string) as word
+sub http_set_port() 
 
 	dim port_segment as string
-	dim b as byte=instr(1,url,":",2)
+	dim b as byte=instr(1,http_request_list.url,":",2)
+	dim port as word
 	if b>0 then
-		http_get_port=right(url,len(url)-b)
+		port=right(http_request_list.url,len(http_request_list.url)-b)
 		b=instr(1,port_segment,"/",1)
 		if b>0 then
-			http_get_port=left(port_segment,b-1)
+			port=left(port_segment,b-1)
 		end if
 	else 
-		http_get_port=0
+		port=0
 	end if
-		
-end function
-
-sub http_get_ip_and_port(url as string)
-
-	http_request_list.http_request_in_progress=true
-	dim port as word = http_get_port(url)
-	if left(url, 5)="https" then 
-#if TLS_AVAILABLE
+	
+	if left(http_request_list.url, 5)="https" then 
+	#if TLS_AVAILABLE
 		http_request_list.ssl=true
 		if port=0 then
 			http_request_list.port=443
 		else
 			http_request_list.port=port
 		end if
-#else
+	#else
 		http_failed("Device does not support TLS")
 		exit sub			
-#endif
+	#endif
 	else
 		http_request_list.ssl=false
 		if port=0 then
@@ -430,7 +431,6 @@ sub http_get_ip_and_port(url as string)
 			http_request_list.port=port
 		end if
 	end if
-	http_dns_query(http_request_list.domain_name)	
 	
 end sub
 
@@ -440,7 +440,8 @@ sub http_check_dns_queue()
 		exit sub
 	end if
 	if http_request_list.state=DNS_NOT_COMPLETE then
-		http_get_ip_and_port(http_request_list.url)
+		http_set_port()
+		http_start_request()
 	end if		
 	
 end sub
@@ -450,7 +451,7 @@ sub http_proc_timer()
 	if http_start_called=false then		
 		exit sub
 	end if
-	http_check_dns_queue()
+'	http_check_dns_queue()
 	if http_request_list.state>DNS_REQUEST_SENT then
 		http_timer_count = http_timer_count + 1
 		if http_timer_count > HTTP_TIMEOUT then
@@ -467,74 +468,83 @@ function http_get_path(url as string) as string
 		
 end function
 
-sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, byref data as string, byref content_type as string, request_length as dword, long_request as boolean)
-
-	if content_type="" then
-		content_type="text/plain"
-	end if
-	http_request_list.url=url
-	http_request_list.method=method
-	http_request_list.remaining_content_length=request_length
-	if long_request=true then
-		if method=HTTP_GET or method=HTTP_HEAD then
-			http_request_list.request=http_methods(method) + " " + http_get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a" 
-		else	
-			http_request_list.request=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(request_length) + "\x0d\x0a\x0d\x0a"
+sub http_send_required_data()
+	
+	
+'		http_set_data(http_request_list.request)
+'		sock.send()
+'		callback_http_send_headers()
+'		http_set_data("\x0d\x0a")
+'		sock.send()	
+		http_set_data(http_methods(http_request_list.method) + " " + http_get_path(http_request_list.url))
+		sock.send()
+		if (http_request_list.method=HTTP_GET or http_request_list.method=HTTP_HEAD) and (http_request_list.data<>"") then
+			http_set_data("?" + http_request_list.data)
+			sock.send()			
 		end if
+		http_set_data(" HTTP/1.1\r\nHost: " + http_request_list.domain_name + "\r\n")  
+		sock.send()		
+		if (http_request_list.method<>HTTP_GET and http_request_list.method<>HTTP_HEAD) then
+			http_set_data("Content-Length: " + str(http_request_list.remaining_content_length) + "\r\n")
+			sock.send()
+		end if		
+	
+end sub
+
+sub http_generate_request(byref url as string, method as HTTP_REQUEST_METHODS, request_length as dword)
+
+
+	if method=HTTP_GET or method=HTTP_HEAD then
+		http_request_list.request=http_methods(method) + " " + http_get_path(url) + "?" + http_request_list.data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0a" 
 	else
-		if method=HTTP_GET or method=HTTP_HEAD then
-			http_request_list.request=http_methods(method) + " " + http_get_path(url) + "?" + data + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0a\x0d\x0a"
-		else	
-			http_request_list.request=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Type: " + content_type + "\x0d\x0aContent-Length: " + str(len(data)) + "\x0d\x0a\x0d\x0a" + data
+		if http_request_list.long_request=true then
+			http_request_list.request=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Length: " + str(request_length) + "\x0d\x0a"
+		else
+			http_request_list.request=http_methods(method) + " " + http_get_path(url) + " HTTP/1.1\x0d\x0aHost: " + http_get_domain_name(url) + "\x0d\x0aContent-Length: " + str(len(http_request_list.data)) + "\x0d\x0a"
 		end if
 	end if
 		
 end sub
 
-function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string) as byte
-	
-	http_request=http_request_with_buffers(method,url,interface,data,content_type,2,2)
-	
-end function
-
-function http_request_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
-'Sends an HTTP request of a maximum length of 255 bytes
+function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, request_length as dword) as byte
 
 	http_start()
 	http_timer_count = 0
-	http_generate_request(url, method, data, content_type, 0, false)
-	http_request_with_buffers=http_request_list.socket
-	http_request_list.interface=interface
-	http_request_list.txbuffrq=txbuffrq
-	http_request_list.rxbuffrq=rxbuffrq
+	http_request_list.data=data
+	http_request_list.url=url
+	http_request_list.method=method
+	http_request_list.remaining_content_length=request_length
+	if request_length=0 then
+		http_request_list.long_request=false
+		http_request_list.remaining_content_length=len(data)
+	else
+		http_request_list.long_request=true
+	end if
+	http_request_merged=http_request_list.socket
+	http_request_list.interface=interface	
 	http_request_list.chunked=false
 	if http_request_list.http_request_in_progress=false then
-		http_get_ip_and_port(url)
-	end if
+		http_set_port()
+		http_start_request()
+	end if	
 	
 end function
 
-function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string) as byte
-'Sends a HTTP request to the specified path on a specified domain name. 
+function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string) as byte
+''The "Content-Type" header is a requirement for most HTTP requests	
 	
-	http_request_long=http_request_long_with_buffers(method,url,interface,request_length,content_type,2,2)
+	http_request=http_request_merged(method, url, interface, data, 0) 
 	
 end function
 
-function http_request_long_with_buffers(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword, byref content_type as string, txbuffrq as byte, rxbuffrq as byte) as byte
+function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
 'Sends a HTTP request to the specified path on a specified domain name. 
 	
-	http_start()
-	http_generate_request(url,method, "", content_type, request_length, true)
-	http_request_long_with_buffers=http_request_list.socket
-	http_request_list.interface=interface
-	http_request_list.txbuffrq=txbuffrq
-	http_request_list.rxbuffrq=rxbuffrq
-	if http_request_list.http_request_in_progress=false then
-		http_get_ip_and_port(url)
-	end if
-		
+	http_request_long=http_request_merged(method, url, interface, "", request_length) 
+	
+	
 end function
+
 
 sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 	
@@ -552,19 +562,9 @@ sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_str
 	
 end sub
 
-sub http_set_data(data as string)
 
-	if http_request_list.ssl=true then
-#if TLS_AVAILABLE
-		sock.tlssetdata(data)
-#endif
-	else
-		sock.setdata(data)
-	end if
-	
-end sub
 
-function http_send_post_data(data as string) as word
+ function http_send_post_data(data as string) as word
 	
 	if http_check_socket_list()=NG then
 		exit function
@@ -579,14 +579,13 @@ function http_send_post_data(data as string) as word
 		else
 			http_send_post_data=sock.txfree
 		end if
+		data=left(data,http_send_post_data)
+		http_set_data(data)
 	end if
 	if http_request_list.remaining_content_length<=http_send_post_data then
 		http_send_post_data=http_request_list.remaining_content_length
 	end if	
 	http_request_list.remaining_content_length=http_request_list.remaining_content_length-http_send_post_data
-	data=left(data,http_send_post_data)
-	http_set_data(data)
-	sock.notifysent(0)
 	sock.send()		
 	sys.debugprint("Remaining data length: " + str(http_request_list.remaining_content_length) +"\r\n")
 end function
@@ -630,32 +629,51 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	end if	
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
-	else
-		if http_request_list.ssl=true then
+	end if
+	dim state as pl_sock_state=PL_SST_EST
+	if http_request_list.ssl=true then		
 #if TLS_AVAILABLE
-			select case sock.state
-			case PL_SST_EST_AOPENED:
-				dim domain as string = http_request_list.domain_name
-				sock.tlshandshake(domain)
-			case PL_SST_EST_TLS:
-				http_set_data(http_request_list.request)
-				sock.send()
-				if http_request_list.method=HTTP_POST and http_request_list.remaining_content_length>0 then
-					callback_http_send_post_data(http_request_list.remaining_content_length)
-				end if
-			end select
+		if sock.state=PL_SST_EST_AOPENED then
+			dim domain as string = http_request_list.domain_name
+			dim handshake_res as pl_tls_result = sock.tlshandshake(domain)
+			if handshake_res<>PL_TLS_SUCCESS then
+				http_failed("Handshake Error")
+			end if
+		end if
+		state=PL_SST_EST_TLS	
 #endif
-		else	
-			http_set_data(http_request_list.request)
-			sock.send()
-			if http_request_list.remaining_content_length>0 then
+	end if
+	if sock.state=state then
+'		http_set_data(http_request_list.request)
+'		sock.send()
+'		callback_http_send_headers()
+'		http_set_data("\x0d\x0a")
+'		sock.send()
+		http_send_required_data()
+		callback_http_send_headers()
+		http_set_data("\r\n")
+		sock.send()
+		if http_request_list.method<>HTTP_GET and http_request_list.method<>HTTP_HEAD then
+			if http_request_list.long_request=false then
+				http_set_data(http_request_list.data)
+				sock.send()
+			else
 				callback_http_send_post_data(http_request_list.remaining_content_length)
 			end if
 		end if
+		http_request_list.state=REQUEST_SENT	
 	end if
-	http_request_list.state=REQUEST_SENT	
+	
 	
 end sub
+
+sub http_send_headers(header_name as string, header_value as string)
+	
+	http_set_data(header_name + ": " + header_value + "\x0d\x0a")
+	sock.send()
+	
+end sub
+
 
 sub http_on_sock_data_sent()
 
