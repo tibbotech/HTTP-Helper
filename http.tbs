@@ -369,29 +369,33 @@ sub http_start_request()
 	
 	dim is_ip_address as boolean=true
 	dim b as byte
-	while is_ip_address=true 
-		for b=1 to len(http_request_list.url)
-			dim s as string=mid(http_request_list.url,b,1)
-			dim ascii as word=asc(s)
-			if ascii>=46 and ascii<=57 then
-			else
-				is_ip_address=false
-				exit for
-			end if
-		next b
-		if is_ip_address=true then
-			http_request_list.ip=http_request_list.url
-			http_request_list.state=DNS_REQUEST_SENT
-			http_request_list.dns_request_in_progress=false
-			http_request_list.state=DNS_COMPLETE
-			http_init_request_socket()
-			exit sub
+	dim domain_name as string = http_get_domain_name(http_request_list.url)
+	dim domain_start as byte = instr(1,http_request_list.url,domain_name,1)
+	dim domain_end as byte = domain_start + len(domain_name)
+	if domain_start=0 then
+		http_failed("malformed url")
+		exit sub
+	end if
+	for b=domain_start to domain_end-1
+		dim s as string=mid(http_request_list.url,b,1)
+		dim ascii as word=asc(s)
+		if ascii>=46 and ascii<=57 then
+		else
+			is_ip_address=false
+			exit for
 		end if
-	wend
-	http_request_list.dns_request_in_progress=true
-	dns_connect(http_request_list.interface, HTTP_DNS_SERVER, 0)
-	dns_query(http_get_domain_name(http_request_list.url))
-	http_request_list.state=DNS_REQUEST_SENT
+	next b
+	if is_ip_address=true then
+		http_request_list.ip=domain_name
+		http_request_list.dns_request_in_progress=false
+		http_request_list.state=DNS_COMPLETE
+		http_init_request_socket()
+	else
+		http_request_list.dns_request_in_progress=true
+		dns_connect(http_request_list.interface, HTTP_DNS_SERVER, 0)
+		dns_query(domain_name)
+		http_request_list.state=DNS_REQUEST_SENT
+	end if
 		
 end sub
 
@@ -619,7 +623,7 @@ sub http_dns_failure()
 end sub 
 
 sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
-
+	
 	if http_start_called=false then		
 		exit sub
 	end if	
@@ -629,20 +633,32 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if newstatesimple<>PL_SSTS_EST then
 		exit sub
 	end if
-	dim state as pl_sock_state=PL_SST_EST
+	if sock.statesimple=PL_SSTS_CLOSED then
+		if http_request_list.state <=REQUEST_SENT then
+			http_failed("Connection closed")
+			exit sub
+		end if
+	end if
+	if http_request_list.state>=REQUEST_SENT then
+		exit sub
+	end if
+	
 	if http_request_list.ssl=true then		
 #if TLS_AVAILABLE
-		if sock.state=PL_SST_EST_AOPENED then
+		if sock.state<>PL_SST_EST_TLS then
 			dim domain as string = http_request_list.domain_name
 			dim handshake_res as pl_tls_result = sock.tlshandshake(domain)
 			if handshake_res<>PL_TLS_SUCCESS then
 				http_failed("Handshake Error")
 			end if
+			exit sub
 		end if
-		state=PL_SST_EST_TLS	
+#else
+		http_failed("HTTPS not available")
+		exit sub
 #endif
 	end if
-	if sock.state=state then
+	if http_request_list.state<=REQUEST_SENT then
 '		http_set_data(http_request_list.request)
 '		sock.send()
 '		callback_http_send_headers()
