@@ -62,8 +62,6 @@ end enum
 
 type http_request_type
 
-	dns_request_in_progress as boolean
-	http_request_in_progress as boolean
 	long_request as boolean
 	state as http_reply_states
 	url as string

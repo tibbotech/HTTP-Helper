@@ -13,10 +13,10 @@ type http_test
 end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
-	{HTTP_GET, "http://httpbin.org/get", "",  ""},
+'	{HTTP_GET, "http://httpbin.org/get", "",  ""},
 '	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "azure.cer"},
 '	{HTTP_GET, "https://shopee.tw/", "", "shopee.cer"},
-	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer"},
+'	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer"},
 '	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "azure.cer"},
 '	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "httpbin.cer"},
 '	{HTTP_GET, "https://www.amazon.com/", "", "amazon.cer"},
@@ -24,8 +24,13 @@ dim tests as http_test(NUM_OF_TESTS) = {
 '	{HTTP_GET, "https://www.google.com/", "", "google.cer"},
 '	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "ms2.cer"},
 '	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "ms.cer"},
-'	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked", "", "ms.cer"},
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
 	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
+	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
+'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 }
 
 sub on_sys_init()

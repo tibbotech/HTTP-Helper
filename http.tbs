@@ -18,16 +18,11 @@ end sub
 
 sub http_start()
 	
-	if http_request_list.http_request_in_progress=true then
-		http_stop()
-		http_debugprint("Current HTTP request cancelled, starting new request.")
-	end if
 	if http_start_called=true then		
 		exit sub
 	else
 		http_start_called=true
 	end if	
-	http_request_list.http_request_in_progress=false
 	http_request_list.state=FREE
 	http_request_list.socket = sock_get("HTT")
 	
@@ -216,14 +211,20 @@ function http_get_chunk_length() as ok_ng
 	
 end function
 
-sub http_request_complete()
+sub http_reset_socket()
 
-	http_request_list.state=FREE
+	http_request_list.state=FREE 
 	sock.txclear()
 	sock.rxclear()
 	sock.close()
 	sock.discard()
-	http_request_list.http_request_in_progress=false 
+	
+end sub
+
+
+sub http_request_complete()
+
+	http_reset_socket()
 	http_debugprint("Request complete")
 	callback_http_request_complete()
 
@@ -283,14 +284,6 @@ sub http_proc_data()
 		http_get_content()
 	end select
 
-end sub
-
-sub http_reset_socket()
-
-	http_request_list.dns_request_in_progress=false
-	http_request_list.http_request_in_progress=false
-	http_request_list.state=FREE 
-	
 end sub
 
 function http_get_domain_name(url as string) as string
@@ -391,11 +384,9 @@ sub http_start_request()
 	next b
 	if is_ip_address=true then
 		http_request_list.ip=domain_name
-		http_request_list.dns_request_in_progress=false
 		http_request_list.state=DNS_COMPLETE
 		http_init_request_socket()
 	else
-		http_request_list.dns_request_in_progress=true
 		dns_connect(http_request_list.interface, HTTP_DNS_SERVER, 0)
 		dns_query(domain_name)
 		http_request_list.state=DNS_REQUEST_SENT
@@ -443,9 +434,6 @@ end sub
 
 sub http_check_dns_queue()
 
-	if http_request_list.http_request_in_progress=true then
-		exit sub
-	end if
 	if http_request_list.state=DNS_NOT_COMPLETE then
 		http_set_port()
 		http_start_request()
@@ -516,6 +504,10 @@ end sub
 function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string, request_length as dword) as byte
 
 	http_start()
+	if http_request_list.state<>FREE then
+		http_stop()
+		http_debugprint("Current HTTP request cancelled, starting new request.")
+	end if
 	http_timer_count = 0
 	http_request_list.data=data
 	http_request_list.url=url
@@ -530,7 +522,7 @@ function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string
 	http_request_merged=http_request_list.socket
 	http_request_list.interface=interface	
 	http_request_list.chunked=false
-	if http_request_list.http_request_in_progress=false then
+	if http_request_list.state=FREE then
 		http_set_port()
 		http_start_request()
 	end if	
@@ -559,7 +551,6 @@ sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_str
 		if dns_current_domain() = http_request_list.domain_name then
 			if(return_type=EN_DNS_RET_IP) then
 				http_request_list.ip=ddstr(return_string)
-				http_request_list.dns_request_in_progress=false
 				http_request_list.state=DNS_COMPLETE
 				http_init_request_socket()
 				http_check_dns_queue()
@@ -649,14 +640,17 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	
 	if http_request_list.ssl=true then		
 #if TLS_AVAILABLE
-		if sock.state<>PL_SST_EST_TLS then
+		if sock.state=PL_SST_EST_AOPENED then
 			dim domain as string = http_request_list.domain_name
 			dim handshake_res as pl_tls_result = sock.tlshandshake(domain)
 			if handshake_res<>PL_TLS_SUCCESS then
 				http_failed("Handshake Error")
 			end if
+		end if
+		if sock.state<>PL_SST_EST_TLS then
 			exit sub
 		end if
+		
 #else
 		http_failed("HTTPS not available")
 		exit sub
