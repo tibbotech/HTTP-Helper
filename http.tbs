@@ -219,10 +219,13 @@ end function
 sub http_request_complete()
 
 	http_request_list.state=FREE
+	sock.txclear()
+	sock.rxclear()
 	sock.close()
 	sock.discard()
 	http_request_list.http_request_in_progress=false 
-	callback_http_request_complete()				
+	http_debugprint("Request complete")
+	callback_http_request_complete()
 
 end sub
 
@@ -239,6 +242,7 @@ sub http_get_content()
 	if http_request_list.remaining_response_content_length=0 then
 		http_request_list.chunked=false
 		http_request_complete()
+		exit sub
 	end if	
 	dim data as string
 	if http_request_list.remaining_response_content_length>HTTP_MAX_DATA_LENGTH then
