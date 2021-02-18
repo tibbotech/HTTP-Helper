@@ -1,6 +1,3 @@
-#ifndef HTTP_MAX_REQ_LEN
-	#define HTTP_MAX_REQ_LEN 255
-#endif
 
 #ifndef HTTP_DNS_SERVER
 	#define HTTP_DNS_SERVER "8.8.8.8"
@@ -70,8 +67,7 @@ type http_request_type
 	socket as byte
 	port as word 
 	ip as string(15)
-	ssl as boolean
-	request as string(HTTP_MAX_REQ_LEN)
+	tls as boolean
 	remaining_response_content_length as dword
 	remaining_content_length as dword
 	chunked as boolean
@@ -84,6 +80,7 @@ declare function http_request(method as HTTP_REQUEST_METHODS, byref url as strin
 declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
 declare function http_encode_url(unencoded_url as string) as string
 declare function http_send_post_data(data as string) as word
+declare function http_get_domain_name(url as string) as string
 
 declare sub http_start()
 declare sub http_stop()
@@ -93,7 +90,6 @@ declare sub http_on_sock_data_sent()
 declare sub http_proc_timer()
 declare sub http_dns_failure()
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
-declare sub callback_http_send_headers()
 declare sub http_send_headers(header_name as string, header_value as string)
 
 declare function callback_http_open_romfile() as dword
@@ -106,3 +102,4 @@ declare sub callback_http_response_code_arrival(http_response as string)
 declare sub callback_http_headers_complete()
 declare sub callback_http_request_complete()
 declare sub callback_http_request_failed(error_message as string)
+declare sub callback_http_send_headers()

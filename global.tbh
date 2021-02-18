@@ -1,7 +1,7 @@
 'DEFINES-------------------------------------------------------------
 
 #define HTTP_DEBUG_PRINT 1
-#define DHCP_DEBUG_PRINT 0
+#define DHCP_DEBUG_PRINT 1
 #define DNS_DEBUG_PRINT 1
 #define CELLULAR_AVAILABLE 1
 #define DNS_REPLY_TIMEOUT 60
