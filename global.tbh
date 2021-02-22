@@ -13,13 +13,11 @@
 #endif
 
 #define SOCK_DEBUG_PRINT 1
-
 #define WLN_CLK PL_IO_NUM_53
 #define WLN_CS PL_IO_NUM_49
 #define WLN_DI PL_IO_NUM_52
 #define WLN_DO PL_IO_NUM_50
 #define WLN_RST PL_IO_NUM_51
-
 #define HTTP_MAX_URL_LEN 255
 
 'INCLUDES------------------------------------------------------------
@@ -29,5 +27,3 @@ include "dhcp\trunk\dhcp.tbh"
 include "dns\trunk\dns.tbh"
 include "wln\trunk\wln.tbh"
 include "http.tbh" 
-
-declare sub do_test()
