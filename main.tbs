@@ -11,7 +11,7 @@ type http_test
 	cert as string
 	result as string
 end type
-
+'dont commit
 dim tests as http_test(NUM_OF_TESTS) = {
 '	{HTTP_GET, "http://httpbin.org/get", "",  ""},
 '	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "azure.cer"},
