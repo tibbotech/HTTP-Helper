@@ -45,7 +45,7 @@ function http_check_socket_list() as ok_ng
 	if http_request_item.socket=sock.num and sock.num<>255 then
 		http_check_socket_list=ok
 	end if	
-	
+	't
 end function
 
 sub http_set_data(data as string)
