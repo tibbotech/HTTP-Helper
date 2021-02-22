@@ -14,7 +14,7 @@ address=0.36.119.82.191.221
 [address2]
 platform=TPP3W(G2)
 transport=udp_winpcap
-address=50.50.50.50.50.50
+address=0.24.77.12.10.46
 [address3]
 platform=TPP2W(G2)
 transport=udp_winpcap
@@ -22,7 +22,7 @@ address=0.36.119.82.191.221
 [address4]
 platform=WM2000
 transport=udp_winpcap
-address=50.50.50.50.50.50
+address=156.101.249.54.82.166
 [address5]
 platform=WM2000
 transport=serial

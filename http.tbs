@@ -214,12 +214,15 @@ sub http_reset_socket()
 	http_request_item.state=FREE
 	sock.txclear()
 	sock.rxclear()
+	#if TLS_AVAILABLE
+		sock.tlsdeinit()
+	#endif
 	i=sys.timercount
 	sock.close()
 	while sock.statesimple<>PL_SSTS_CLOSED and sys.timercount-i<3 and sys.timercount>=i
 	wend
 	sock.discard()
-	
+
 end sub
 
 
@@ -348,7 +351,7 @@ sub http_init_request_socket()
 	if http_request_item.domain_name<>http_last_domain then
 		sock.tlsdeinit()
 	end if
-	if http_request_item.tls=true and http_request_item.domain_name<>http_last_domain then
+	if http_request_item.tls=true then
 	
 #if PLATFORM_ID<>WM2000
 		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
@@ -478,7 +481,7 @@ function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string
 
 	http_start()
 	if http_request_item.state<>FREE then
-		http_stop()
+		http_reset_socket()
 		http_debugprint("Current HTTP request cancelled, starting new request.")
 	end if
 	http_timer_count = 0

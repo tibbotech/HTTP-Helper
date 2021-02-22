@@ -27,14 +27,14 @@ dim tests as http_test(NUM_OF_TESTS) = {
 '	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
 '	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
 '	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
-	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
+	{HTTP_GET, "https://104.40.239.93/", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 '	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
 	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", ""},
 	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 	{HTTP_GET, "http://192.168.1.93/", "", ""}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-	{HTTP_GET, "http://192.168.1.93:3067", "", ""}, 'PORT
-	{HTTP_GET, "http://192.168.1.93:3067/", "", ""}, 'PORT
+'	{HTTP_GET, "http://192.168.1.93:3067", "", ""}, 'PORT
+'	{HTTP_GET, "http://192.168.1.93:3067/", "", ""}, 'PORT
 '	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer"}, 'ECDS SERVER USE SETUP SSL EXAMPLE
 }
 
