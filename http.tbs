@@ -214,6 +214,7 @@ end function
 sub http_reset_socket()
 	dim i as word
 	sock.num=http_request_item.socket
+	http_request_item.remaining_response_content_length=0
 	http_request_item.state=FREE
 	sock.txclear()
 	sock.rxclear()
@@ -505,6 +506,7 @@ function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string
 	http_request_item.url=url
 	http_request_item.method=method
 	http_request_item.remaining_content_length=request_length
+	http_request_item.chunked=false
 	if request_length=0 then
 		http_request_item.long_request=false
 		http_request_item.remaining_content_length=len(data)
