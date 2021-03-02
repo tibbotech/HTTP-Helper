@@ -364,9 +364,16 @@ sub http_init_request_socket()
 		sock.tlsbuffrq(HTTP_TLS_BUFF_PAGES)
 		sys.buffalloc()
 #endif
-		if sock.tlsinit(callback_http_open_romfile())<>PL_TLS_SUCCESS then
-			http_failed("Error loading certificate")
-			sock_error=true
+		if http_request_item.check_cert=true then
+			if sock.tlsinit(callback_http_open_romfile())<>PL_TLS_SUCCESS then
+				http_failed("Error loading certificate")
+				sock_error=true
+			end if	
+		else
+			if sock.tlsinit(0)<>PL_TLS_SUCCESS then
+				http_failed("Error loading certificate")
+				sock_error=true
+			end if	
 		end if
 #endif
 	end if	
@@ -523,16 +530,33 @@ end function
 function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string) as byte
 ''The "Content-Type" header is a requirement for most HTTP requests	
 	
+	http_request_item.check_cert=true
 	http_request=http_request_merged(method, url, interface, data, 0) 
+	
+end function
+
+function http_request_no_cert_check(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string) as byte
+''The "Content-Type" header is a requirement for most HTTP requests	
+	
+	http_request_item.check_cert=false
+	http_request_no_cert_check=http_request_merged(method, url, interface, data, 0) 
 	
 end function
 
 function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
 'Sends a HTTP request to the specified path on a specified domain name. 
 	
+	http_request_item.check_cert=true
 	http_request_long=http_request_merged(method, url, interface, "", request_length) 
 	
+end function
+
+function http_request_long_no_cert_check(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
+'Sends a HTTP request to the specified path on a specified domain name. 
 	
+	http_request_item.check_cert=false
+	http_request_long_no_cert_check=http_request_merged(method, url, interface, "", request_length) 
+		
 end function
 
 
