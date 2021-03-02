@@ -10,27 +10,30 @@ type http_test
 	data as string
 	cert as string
 	expected_to_complete as boolean
+	check_cert as boolean
 	result as string
 end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
 
 
-	{HTTP_GET, "http://httpbin.org/get","","",true,}, 							'Get request
-	{HTTP_POST, "http://httpbin.org/post","data","",true}, 						'Post request
-	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
-	{HTTP_GET, "http://httpbin.org:100/get","","",false}, 						'Port
-	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 					'IP Address
-	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",true}, 			'IP Address and Port
-	{HTTP_GET, "http://httpbin.org:443/get","","",true}, 						'Not HTTPS and port 443
-	{HTTP_GET, "https://httpbin.org:100/get","","",false}, 						'HTTPS and not port 443
-	{HTTP_GET, "httpbin.org/get","","",false}, 									'Malformed URL
-	{HTTP_GET, "http://httpbin.org/get/","","",true}, 							'Trailing slash (Should complete but return 404)
+'	{HTTP_GET, "http://httpbin.org/get","","",true,}, 							'Get request
+'	{HTTP_POST, "http://httpbin.org/post","data","",true}, 						'Post request
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
+'	{HTTP_GET, "http://httpbin.org:100/get","","",false}, 						'Port
+'	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 					'IP Address
+'	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",true}, 			'IP Address and Port
+'	{HTTP_GET, "http://httpbin.org:443/get","","",true}, 						'Not HTTPS and port 443
+'	{HTTP_GET, "https://httpbin.org:100/get","","",false}, 						'HTTPS and not port 443
+'	{HTTP_GET, "httpbin.org/get","","",false}, 									'Malformed URL
+'	{HTTP_GET, "http://httpbin.org/get/","","",true}, 							'Trailing slash (Should complete but return 404)
 
 	
 	
 '	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "azure.cer"},
-'	{HTTP_GET, "https://shopee.tw/", "", "shopee.cer"},
+	{HTTP_GET, "https://shopee.tw/", "", "shopee.cer""",true}, 
+	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
+
 '	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer"},
 '	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "azure.cer"},
 '	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "httpbin.cer"},
