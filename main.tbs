@@ -293,4 +293,7 @@ sub on_dhcp_ok(renew as enum no_yes, interface as enum pl_sock_interfaces, ip as
 end sub
 
 sub callback_http_send_headers()
+
+	http_send_headers("Content-Type", "text/plain")
+
 end sub
