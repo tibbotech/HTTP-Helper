@@ -6,7 +6,7 @@ name=HTTP-Helper
 output=HTTP-Helper.tpc
 debug=on
 defines= /dLCD_TYPE=SOLOMON_SSD1963_FIXED_IO /dWLN_WPA=1 /dOBJECT_LCD=LCD_ENABLED /dOBJECT_BT=BT_ENABLED /dWLN_AVAILABLE=1 /dOBJECT_FD=FD_DISABLED /dDNS_DEBUG_PRINT=1 /dWLN_DEBUG_PRINT=1 /dOBJECT_KP=KP_ENABLED /dOBJECT_WLN=WLN_ENABLED
-transport=udp_winpcap
+transport=serial
 [address1]
 platform=TPP3W(G2)
 transport=udp_broadcast
@@ -26,11 +26,11 @@ address=156.101.249.54.82.61
 [address5]
 platform=WM2000
 transport=serial
-address=COM10:921600
+address=COM6:921600
 [address6]
 platform=EM510W
 transport=udp_winpcap
-address=COM10:921600
+address=COM4:921600
 [address7]
 platform=EM2000W
 transport=udp_broadcast
@@ -51,6 +51,10 @@ address=0.101.249.54.101.44
 platform=TPP3W
 transport=udp_broadcast
 address=0.36.119.81.79.1
+[address12]
+platform=TPP2W(G2)
+transport=serial
+address=COM4:921600
 [file1]
 path=global.tbh
 type=header

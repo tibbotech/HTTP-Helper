@@ -79,7 +79,7 @@ end type
 declare function http_request(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, byref data as string) as byte
 declare function http_request_long(method as HTTP_REQUEST_METHODS, byref url as string, interface as pl_sock_interfaces, request_length as dword) as byte
 declare function http_encode_url(unencoded_url as string) as string
-declare function http_send_post_data(data as string) as word
+declare function http_send_post_data(byref data as string) as word
 declare function http_get_domain_name(url as string) as string
 
 declare sub http_start()
@@ -91,6 +91,7 @@ declare sub http_proc_timer()
 declare sub http_dns_failure()
 declare sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_string as string)
 declare sub http_send_headers(header_name as string, header_value as string)
+declare sub http_on_sock_data_sent()
 
 declare function callback_http_open_romfile() as dword
 'open the romfile that contains the certificate for the current domain

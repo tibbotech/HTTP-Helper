@@ -17,9 +17,9 @@ end type
 dim tests as http_test(NUM_OF_TESTS) = {
 
 
-'	{HTTP_GET, "http://httpbin.org/get","","",true,}, 							'Get request
-'	{HTTP_POST, "http://httpbin.org/post","data","",true}, 						'Post request
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
+	{HTTP_GET, "http://httpbin.org/get","","",true,}, 							'Get request
+	{HTTP_POST, "http://httpbin.org/post","data","",true}, 						'Post request
+	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
 '	{HTTP_GET, "http://httpbin.org:100/get","","",false}, 						'Port
 '	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 					'IP Address
 '	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",true}, 			'IP Address and Port
@@ -31,10 +31,12 @@ dim tests as http_test(NUM_OF_TESTS) = {
 	
 	
 '	{HTTP_POST,  "https://hpscongregate.eastus.cloudapp.azure.com/login", "", "azure.cer"},
-	{HTTP_GET, "https://shopee.tw/","","""",true}, 
-	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
+'	{HTTP_GET, "https://shopee.tw/","","""",true}, 
+'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},		'Chunked
 
 '	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer"},
+	{HTTP_POST, "http://httpbin.org/post", "765",  "httpbin.cer",true},
+	{HTTP_POST, "https://httpbin.org/post", "765",  "httpbin.cer",true},
 '	{HTTP_POST, "https://hpscongregate.eastus.cloudapp.azure.com", "", "azure.cer"},
 '	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "httpbin.cer"},
 '	{HTTP_GET, "https://www.amazon.com/", "", "amazon.cer"},
@@ -76,7 +78,12 @@ sub do_test()
 		dim test as http_test = tests(test_no)
 '		http_request_long_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,510,test.content_type,2,2)
 '		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data)
-		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data)
+		if val(test.data)<>0 then
+			http_request_long(test.method, test.url,HTTP_REQUEST_INTERFACE,val(test.data))
+		else
+			http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data)
+		end if
+		
 	else
 		sys.debugprint("Tests ended\r\n")
 		dim i as byte = 0
@@ -107,6 +114,12 @@ sub on_sock_data_arrival()
 	dns_proc_data()
 	http_proc_data()
 		
+end sub
+
+sub on_sock_data_sent
+
+	http_on_sock_data_sent()
+
 end sub
 
 sub on_sock_event(newstate as enum pl_sock_state, newstatesimple as enum pl_sock_state_simple)
@@ -218,11 +231,7 @@ sub callback_dhcp_ok(renew as no_yes, interface as pl_sock_interfaces, byref ip 
 	
 end sub
 
-sub on_sock_data_sent()
 
-	http_on_sock_data_sent()
-
-end sub
 
 sub callback_http_post_data_sent_ok()
 	
