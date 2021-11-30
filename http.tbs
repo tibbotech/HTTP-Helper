@@ -39,6 +39,32 @@ sub http_stop()
 	
 end sub
 
+sub http_reset_socket()
+	dim i as word
+	sock.num=http_request_item.socket
+	http_request_item.remaining_response_content_length=0
+	http_request_item.state=FREE
+	sock.txclear()
+	sock.rxclear()
+	#if TLS_AVAILABLE
+		sock.tlsdeinit()
+	#endif
+	i=sys.timercount
+	sock.close()
+	while sock.statesimple<>PL_SSTS_CLOSED and sys.timercount-i<3 and sys.timercount>=i
+	wend
+	sock.discard()
+
+end sub
+
+sub http_request_complete()
+
+	http_reset_socket()
+	http_debugprint("Request complete")
+	callback_http_request_complete()
+
+end sub
+
 function http_check_socket_list() as ok_ng
 	
 	http_check_socket_list=NG
@@ -114,6 +140,51 @@ sub http_parse_headers(byref input_string as string)
 
 end sub
 
+function http_peek_data(size as byte) as string
+	sock.num=http_request_item.socket
+	if http_request_item.tls=true then
+#if TLS_AVAILABLE
+		http_peek_data=sock.tlspeekdata(size)
+#endif
+	else
+		http_peek_data=sock.peekdata(size)
+	end if
+	
+end function
+
+function http_get_chunk_length() as ok_ng
+	http_get_chunk_length = NG
+	dim chunk_length as string
+	dim buffer_data as string = http_peek_data(255)
+	dim timeout as boolean = false
+	dim tmp as string(1)
+	dim index as byte = 1
+	if len(buffer_data) = 0 then
+		exit function
+	end if
+	for index = 1 to len(buffer_data)-1
+		tmp = mid(buffer_data,index,1)
+		if tmp = "\n" then
+			if len(chunk_length) > 0 then
+				http_get_chunk_length = OK
+				http_get_data(index)
+				exit for
+			end if
+		else
+			if tmp <> "\r" then
+				chunk_length=chunk_length+tmp
+			end if
+		end if
+	next index
+	if chunk_length = "" then
+		exit function
+	end if
+	chunk_length="&h"+chunk_length
+	http_request_item.remaining_response_content_length=lval(chunk_length)
+	http_chunk_length = http_request_item.remaining_response_content_length
+	
+end function
+
 sub http_get_headers()
 
 	sock.num=http_request_item.socket
@@ -174,78 +245,17 @@ sub http_get_headers()
 		end if
 	wend	
 	
-end sub
-
-function http_peek_data(size as byte) as string
-	sock.num=http_request_item.socket
-	if http_request_item.tls=true then
-#if TLS_AVAILABLE
-		http_peek_data=sock.tlspeekdata(size)
-#endif
-	else
-		http_peek_data=sock.peekdata(size)
+	if http_request_item.chunked=true then
+		if http_get_chunk_length()=NG then
+			exit sub
+		end if			
 	end if
 	
-end function
-
-function http_get_chunk_length() as ok_ng
-	http_get_chunk_length = NG
-	dim chunk_length as string
-	dim buffer_data as string = http_peek_data(255)
-	dim timeout as boolean = false
-	dim tmp as string(1)
-	dim index as byte = 1
-	if len(buffer_data) = 0 then
-		exit function
-	end if
-	for index = 1 to len(buffer_data)-1
-		tmp = mid(buffer_data,index,1)
-		if tmp = "\n" then
-			if len(chunk_length) > 0 then
-				http_get_chunk_length = OK
-				http_get_data(index)
-				exit for
-			end if
-		else
-			if tmp <> "\r" then
-				chunk_length=chunk_length+tmp
-			end if
-		end if
-	next index
-	if chunk_length = "" then
-		exit function
-	end if
-	chunk_length="&h"+chunk_length
-	http_request_item.remaining_response_content_length=lval(chunk_length)
-	http_chunk_length = http_request_item.remaining_response_content_length
+	if http_request_item.remaining_response_content_length=0 then
+		http_request_complete()
+		exit sub
+	end if	
 	
-end function
-
-sub http_reset_socket()
-	dim i as word
-	sock.num=http_request_item.socket
-	http_request_item.remaining_response_content_length=0
-	http_request_item.state=FREE
-	sock.txclear()
-	sock.rxclear()
-	#if TLS_AVAILABLE
-		sock.tlsdeinit()
-	#endif
-	i=sys.timercount
-	sock.close()
-	while sock.statesimple<>PL_SSTS_CLOSED and sys.timercount-i<3 and sys.timercount>=i
-	wend
-	sock.discard()
-
-end sub
-
-
-sub http_request_complete()
-
-	http_reset_socket()
-	http_debugprint("Request complete")
-	callback_http_request_complete()
-
 end sub
 
 sub http_get_content() 
@@ -259,7 +269,6 @@ sub http_get_content()
 		end if		
 	end if
 	if http_request_item.remaining_response_content_length=0 then
-		http_request_item.chunked=false
 		http_request_complete()
 		exit sub
 	end if	
@@ -436,7 +445,7 @@ sub http_set_port()
 	if b>0 then
 		dim index as byte = b+1
 		dim ascii as byte
-		while index < len(http_request_item.url)
+		while index <= len(http_request_item.url)
 			dim s as string=mid(http_request_item.url,index,1)
 			index=index+1
 			ascii=asc(s)

@@ -31,3 +31,4 @@ include "wln\trunk\wln.tbh"
 include "http.tbh" 
 
 declare sub do_test()
+declare sub http_endpoint_requested_test()
