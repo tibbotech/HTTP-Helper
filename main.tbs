@@ -3,6 +3,7 @@ dim test_no as byte = 0
 dim test_inprogress as boolean = true
 const NUM_OF_TESTS = 40
 dim starttime as dword
+dim chunk_loop as byte = 1
 
 type http_test
 	method as HTTP_REQUEST_METHODS
@@ -10,7 +11,6 @@ type http_test
 	data as string
 	cert as string
 	expected_to_complete as boolean
-	content_received as boolean
 	check_cert as boolean
 	result as string
 end type
@@ -18,11 +18,12 @@ end type
 dim tests as http_test(NUM_OF_TESTS) = {
 
 	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 																		'IP Address
-	{HTTP_GET, "http://192.168.1.156:8800","data=test_data","",true}, 																'Check content arrival
-	{HTTP_GET, "http://192.168.1.156:8800","","",true}, 																			'Check no content arrival
+	{HTTP_GET, "http://192.168.1.156:8800/chunked","","",true}, 																	'Chunked check content
+	{HTTP_GET, "http://192.168.1.156:8800/notChunked","data=test_data","",true}, 													'Check content arrival
+	{HTTP_GET, "http://192.168.1.156:8800/noContent","","",true}, 																	'Check no content arrival
+	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},															'Chunked
 	{HTTP_GET, "http://httpbin.org/get","","",true,}, 																				'Get request
 	{HTTP_POST, "http://httpbin.org/post","data","",true}, 																			'Post request
-	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},															'Chunked
 	{HTTP_GET, "http://httpbin.org:100/get","","",false}, 																			'Port
 	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",false}, 																'IP Address and Port
 	{HTTP_GET, "http://httpbin.org:443/get","","",false}, 																			'Not HTTPS and port 443
@@ -89,7 +90,6 @@ sub do_test()
 '		http_request_long_with_buffers(test.method, test.url,HTTP_REQUEST_INTERFACE,510,test.content_type,2,2)
 '		http_request(test.method, test.url,HTTP_REQUEST_INTERFACE,test.data)
 		test.result=""
-		test.content_received=false
 		if val(test.data)<>0 then
 			http_request_long(test.method, test.url,HTTP_REQUEST_INTERFACE,val(test.data))
 		else
@@ -186,7 +186,7 @@ sub callback_http_request_complete()
 	
 	if tests(test_no).expected_to_complete=true then
 		if test_no<=1 then
-			if tests(test_no).content_received=true then
+			if tests(test_no).result="" then
 				test_passed()
 			else
 				test_failed("Failed - Passed when expected to fail")
@@ -200,7 +200,7 @@ end sub
 
 sub callback_http_request_failed(error_message as string)
 
-	if tests(test_no).expected_to_complete=false then
+	if tests(test_no).result="" then
 		test_passed()
 	else
 		test_failed(error_message)
@@ -330,16 +330,24 @@ end sub
 sub callback_http_headers_complete()
 end sub
 
+
+
 sub callback_http_content_arrival(data as string)
-	if test_no=0 then
-		if data="If you can read this data, you have successfully completed a TLS web request using a Tibbo device." then
-			tests(test_no).content_received=true
+	select case test_no
+	case 0:
+		if data<>"If you can read this data, you have successfully completed a TLS web request using a Tibbo device." then
+			tests(test_no).result="Content arrival data not received"
 		end if
-	else if test_no=1 then
-		if data="test_data" then
-			tests(test_no).content_received=true
+	case 1:
+		if data<>"chunk"+str(chunk_loop) then
+			tests(test_no).result="Content arrival data not received"
 		end if
-	end if
+		chunk_loop=chunk_loop+1
+	case 2:
+		if data<>"test_data" then
+			tests(test_no).result="Content arrival data not received"
+		end if
+	end select
 end sub
 
 sub on_dhcp_ok(renew as enum no_yes, interface as enum pl_sock_interfaces, ip as string(16), gateway_ip as string(16), netmask as string(16), lease_time as dword)
