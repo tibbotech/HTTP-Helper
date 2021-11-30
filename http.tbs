@@ -39,24 +39,60 @@ sub http_stop()
 	
 end sub
 
+sub http_reset_socket()
+	dim i as word
+	sock.num=http_request_item.socket
+	http_request_item.remaining_response_content_length=0
+	http_request_item.state=FREE
+	sock.txclear()
+	sock.rxclear()
+	#if TLS_AVAILABLE
+		sock.tlsdeinit()
+	#endif
+	i=sys.timercount
+	sock.close()
+	while sock.statesimple<>PL_SSTS_CLOSED and sys.timercount-i<3 and sys.timercount>=i
+	wend
+	sock.discard()
+
+end sub
+
+sub http_request_complete()
+
+	http_reset_socket()
+	http_debugprint("Request complete")
+	callback_http_request_complete()
+
+end sub
+
 function http_check_socket_list() as ok_ng
 	
 	http_check_socket_list=NG
-	if http_request_item.socket=sock.num and sock.num<>255 then
+	if http_start_called=true and http_request_item.socket=sock.num and sock.num<>255 then
 		http_check_socket_list=ok
 	end if	
 	
 end function
 
-sub http_set_data(data as string)
+sub http_send_data(byref data as string)
 	sock.num=http_request_item.socket
+	dim b as byte=len(data)
+	dim buf as string=data
 	if http_request_item.tls=true then
 #if TLS_AVAILABLE
-		sock.tlssetdata(data)
+		while len(buf) > 0
+			b = sock.tlssetdata(data)
+			buf = right(buf,len(buf)-b)
+			sock.send()
+		wend
 #endif
 	else
-		sock.setdata(data)
+		while sock.txfree < len(buf)
+		wend
+		sock.setdata(buf)
+		sock.send()
 	end if
+	http_debugprint("SEND>" + data)
 	
 end sub
 
@@ -103,6 +139,51 @@ sub http_parse_headers(byref input_string as string)
 	http_remove_leading_whitespace(input_string)
 
 end sub
+
+function http_peek_data(size as byte) as string
+	sock.num=http_request_item.socket
+	if http_request_item.tls=true then
+#if TLS_AVAILABLE
+		http_peek_data=sock.tlspeekdata(size)
+#endif
+	else
+		http_peek_data=sock.peekdata(size)
+	end if
+	
+end function
+
+function http_get_chunk_length() as ok_ng
+	http_get_chunk_length = NG
+	dim chunk_length as string
+	dim buffer_data as string = http_peek_data(255)
+	dim timeout as boolean = false
+	dim tmp as string(1)
+	dim index as byte = 1
+	if len(buffer_data) = 0 then
+		exit function
+	end if
+	for index = 1 to len(buffer_data)-1
+		tmp = mid(buffer_data,index,1)
+		if tmp = "\n" then
+			if len(chunk_length) > 0 then
+				http_get_chunk_length = OK
+				http_get_data(index)
+				exit for
+			end if
+		else
+			if tmp <> "\r" then
+				chunk_length=chunk_length+tmp
+			end if
+		end if
+	next index
+	if chunk_length = "" then
+		exit function
+	end if
+	chunk_length="&h"+chunk_length
+	http_request_item.remaining_response_content_length=lval(chunk_length)
+	http_chunk_length = http_request_item.remaining_response_content_length
+	
+end function
 
 sub http_get_headers()
 
@@ -164,78 +245,17 @@ sub http_get_headers()
 		end if
 	wend	
 	
-end sub
-
-function http_peek_data(size as byte) as string
-	sock.num=http_request_item.socket
-	if http_request_item.tls=true then
-#if TLS_AVAILABLE
-		http_peek_data=sock.tlspeekdata(size)
-#endif
-	else
-		http_peek_data=sock.peekdata(size)
+	if http_request_item.chunked=true then
+		if http_get_chunk_length()=NG then
+			exit sub
+		end if			
 	end if
 	
-end function
-
-function http_get_chunk_length() as ok_ng
-	http_get_chunk_length = NG
-	dim chunk_length as string
-	dim buffer_data as string = http_peek_data(255)
-	dim timeout as boolean = false
-	dim tmp as string(1)
-	dim index as byte = 1
-	if len(buffer_data) = 0 then
-		exit function
-	end if
-	for index = 1 to len(buffer_data)-1
-		tmp = mid(buffer_data,index,1)
-		if tmp = "\n" then
-			if len(chunk_length) > 0 then
-				http_get_chunk_length = OK
-				http_get_data(index)
-				exit for
-			end if
-		else
-			if tmp <> "\r" then
-				chunk_length=chunk_length+tmp
-			end if
-		end if
-	next index
-	if chunk_length = "" then
-		exit function
-	end if
-	chunk_length="&h"+chunk_length
-	http_request_item.remaining_response_content_length=lval(chunk_length)
-	http_chunk_length = http_request_item.remaining_response_content_length
+	if http_request_item.remaining_response_content_length=0 then
+		http_request_complete()
+		exit sub
+	end if	
 	
-end function
-
-sub http_reset_socket()
-	dim i as word
-	sock.num=http_request_item.socket
-	http_request_item.remaining_response_content_length=0
-	http_request_item.state=FREE
-	sock.txclear()
-	sock.rxclear()
-	#if TLS_AVAILABLE
-		sock.tlsdeinit()
-	#endif
-	i=sys.timercount
-	sock.close()
-	while sock.statesimple<>PL_SSTS_CLOSED and sys.timercount-i<3 and sys.timercount>=i
-	wend
-	sock.discard()
-
-end sub
-
-
-sub http_request_complete()
-
-	http_reset_socket()
-	http_debugprint("Request complete")
-	callback_http_request_complete()
-
 end sub
 
 sub http_get_content() 
@@ -249,7 +269,6 @@ sub http_get_content()
 		end if		
 	end if
 	if http_request_item.remaining_response_content_length=0 then
-		http_request_item.chunked=false
 		http_request_complete()
 		exit sub
 	end if	
@@ -369,8 +388,9 @@ sub http_init_request_socket()
 			http_failed("Error loading certificate")
 			sock_error=true
 		end if	
-#endif
 	end if	
+#endif
+
 	sock.rxclear()
 	sock.txclear()
 	if sock_error=false then
@@ -425,7 +445,7 @@ sub http_set_port()
 	if b>0 then
 		dim index as byte = b+1
 		dim ascii as byte
-		while index < len(http_request_item.url)
+		while index <= len(http_request_item.url)
 			dim s as string=mid(http_request_item.url,index,1)
 			index=index+1
 			ascii=asc(s)
@@ -473,17 +493,14 @@ end function
 
 sub http_send_required_data()
 	sock.num=http_request_item.socket
-	http_set_data(http_methods(http_request_item.method) + " " + http_get_path(http_request_item.url))
-	sock.send()
+	http_send_data(http_methods(http_request_item.method) + " " + http_get_path(http_request_item.url))
 	if (http_request_item.method=HTTP_GET or http_request_item.method=HTTP_HEAD) and (http_request_item.data<>"") then
-		http_set_data("?" + http_request_item.data)
-		sock.send()			
+		http_send_data("?" + http_request_item.data)
 	end if
-	http_set_data(" HTTP/1.1\r\nHost: " + http_request_item.domain_name + "\r\n")  
-	sock.send()		
+	http_send_data(" HTTP/1.1\r\n")
+	http_send_headers("Host", http_request_item.domain_name)
 	if (http_request_item.method<>HTTP_GET and http_request_item.method<>HTTP_HEAD) then
-		http_set_data("Content-Length: " + str(http_request_item.remaining_content_length) + "\r\n")
-		sock.send()
+		http_send_headers("Content-Length",str(http_request_item.remaining_content_length))
 	end if
 end sub
 
@@ -512,7 +529,7 @@ function http_request_merged(method as HTTP_REQUEST_METHODS, byref url as string
 	if http_request_item.state=FREE then
 		http_set_port()
 #if TLS_AVAILABLE <> 1
-		if http_request_item.tls=true
+		if http_request_item.tls=true then
 			http_failed("Device does not support TLS")
 			exit function
 		end if
@@ -550,28 +567,17 @@ sub http_dns_answer_acquired(return_type as en_dns_return_type, byref return_str
 	
 end sub
 
-function http_send_post_data(data as string) as word
-	
-	sock.num=http_request_item.socket
-	if http_request_item.tls=true then
-	#if TLS_AVAILABLE
-		http_send_post_data = sock.tlssetdata(data)
-	#endif
-	else
-		if sock.txfree>len(data) then
-			http_send_post_data=len(data)
-		else
-			http_send_post_data=sock.txfree
-		end if
-		data=left(data,http_send_post_data)
-		http_set_data(data)
+function http_send_post_data(byref data as string) as word
+	http_timer_count = 0
+	dim sent as string = data
+	if len(sent) > http_request_item.remaining_content_length then
+		sent = left(sent,http_request_item.remaining_content_length)
 	end if
-	if http_request_item.remaining_content_length<=http_send_post_data then
-		http_send_post_data=http_request_item.remaining_content_length
-	end if	
-	http_request_item.remaining_content_length=http_request_item.remaining_content_length-http_send_post_data
-	sock.send()		
-	sys.debugprint("Remaining data length: " + str(http_request_item.remaining_content_length) +"\r\n")
+	http_send_data(sent)
+	http_request_item.remaining_content_length=http_request_item.remaining_content_length-len(sent)
+	http_debugprint("Remaining data length: " + lstr(http_request_item.remaining_content_length))
+	sock.notifysent(255)
+
 end function
 
 function http_encode_url(unencoded_url as string) as string
@@ -644,26 +650,23 @@ sub http_sock_state_update(newstatesimple as enum pl_sock_state_simple)
 	if http_request_item.state<=REQUEST_SENT then
 		http_send_required_data()
 		callback_http_send_headers()
-		http_set_data("\r\n")
-		sock.send()
+		http_send_data("\r\n")
 		if http_request_item.method<>HTTP_GET and http_request_item.method<>HTTP_HEAD then
 			if http_request_item.long_request=false then
-				http_set_data(http_request_item.data)
-				sock.send()
+				http_send_data(http_request_item.data)
+				http_request_item.state=REQUEST_SENT
 			else
 				callback_http_send_post_data(http_request_item.remaining_content_length)
 			end if
+		else
+			http_request_item.state=REQUEST_SENT
 		end if
-		http_request_item.state=REQUEST_SENT	
 	end if
-	
-	
 end sub
 
 sub http_send_headers(header_name as string, header_value as string)
 	
-	http_set_data(header_name + ": " + header_value + "\x0d\x0a")
-	sock.send()
+	http_send_data(header_name + ": " + header_value + "\r\n")
 	
 end sub
 
@@ -677,6 +680,7 @@ sub http_on_sock_data_sent()
 		callback_http_send_post_data(http_request_item.remaining_content_length)
 	else
 		callback_http_post_data_sent_ok()
+		http_request_item.state=REQUEST_SENT
 		http_debugprint("HTTP Post Data Sent")
 	end if
 	
