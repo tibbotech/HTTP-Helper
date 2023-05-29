@@ -1,7 +1,7 @@
 include "global.tbh"
 dim test_no as byte = 0
-dim test_inprogress as boolean = true
-const NUM_OF_TESTS = 40
+dim test_inprogress as boolean= true
+const NUM_OF_TESTS = 22
 dim starttime as dword
 dim chunk_loop as byte = 1
 
@@ -17,52 +17,56 @@ end type
 
 dim tests as http_test(NUM_OF_TESTS) = {
 
-	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 																		'IP Address
-	{HTTP_GET, "http://192.168.1.93:8800/chunked","","",true}, 																	'Chunked check content
-	{HTTP_GET, "http://192.168.1.93:8800/notChunked","data=test_data","",true}, 													'Check content arrival
-	{HTTP_GET, "http://192.168.1.93:8800/noContent","","",true}, 																	'Check no content arrival
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},															'Chunked
-'	{HTTP_GET, "http://httpbin.org/get","","",true,}, 																				'Get request
-'	{HTTP_POST, "http://httpbin.org/post","data","",true}, 																			'Post request
-'	{HTTP_GET, "http://httpbin.org:100/get","","",false}, 																			'Port
-	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",false}, 																'IP Address and Port
-'	{HTTP_GET, "http://httpbin.org:443/get","","",false}, 																			'Not HTTPS and port 443
-	{HTTP_GET, "https://httpbin.org:100/get","","",false}, 																			'HTTPS and not port 443
-'	{HTTP_GET, "httpbin.org/get","","",false}, 																						'Malformed URL
-'	{HTTP_GET, "http://httpbin.org/get/","","",true}, 																				'Trailing slash (Should complete but return 404)
-'	{HTTP_GET, "https://shopee.tw/","","""",true}, 																					'Don't check certificate
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked","","",true},															'Chunked
-'	{HTTP_POST, "http://httpbin.org/post", "sensor_data",  "httpbin.cer",true},												
-'	{HTTP_POST, "http://httpbin.org/post", "765",  "httpbin.cer",true},
-'	{HTTP_POST, "https://httpbin.org/post", "765",  "httpbin.cer",true},
-'	{HTTP_POST, "https://httpbin.org/post", "sensor_data", "httpbin.cer",true},
-'	{HTTP_GET, "https://www.amazon.com/", "", "amazon.cer",true},
-'	{HTTP_GET, "https://images-na.ssl-images-amazon.com/images/G/01/error/174._TTD_.jpg", "", "amazon.cer",true},
-'	{HTTP_GET, "https://www.google.com/", "", "google.cer",true},
-	{HTTP_GET, "https://img-prod-cms-rt-microsoft-com.akamaized.net/cms/api/am/imageFileData/RE1Mu3b?ver=5c31", "", "ms2.cer",true},
-'	{HTTP_GET, "https://www.microsoft.com/zh-tw", "", "ms.cer",true},
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", "",true},
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", "",true},
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", "",true},
-'	{HTTP_GET, "https://104.40.239.93/", "", "sample.cer",true}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer",true}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-'	{HTTP_GET, "http://anglesharp.azurewebsites.net/Chunked", "", "",true},
-'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer",true}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-'	{HTTP_GET, "http://192.168.1.93/", "", "",true}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-'	{HTTP_GET, "https://104.40.239.93/lorem_ipsum.html", "", "sample.cer",true}, 'ECDS SERVER USE SETUP SSL EXAMPLE
-'	{HTTP_GET, "http://192.168.1.55/test.html","","",true,},																		'Get request
+	{HTTP_GET, "https://104.40.239.93/","","sample.cer",true}, 							'IP Address. Server Name Cannot be verified. Test passes because cert is correct.
+	{HTTP_GET, "https://104.40.239.93/","","",true},									'Certificate not verified. Test passes because certificate is not checked. 
+	{HTTP_GET, "https://104.40.239.93/","","google.der",false},							'Wrong Certificate. Test passes because it times out.
+	
+	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked","","",true},				'Chunked Test certicate not verified. 
+	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked","","ms.der",true},		'Chunked Test certicate verified. Server Name Verified
+	{HTTP_GET, "https://anglesharp.azurewebsites.net/Chunked","","google.der",false},	'Wrong Certificate. Test passes because it times out.
+	
+	
+	{HTTP_GET, "https://api.coindesk.com/v1/bpi/currentprice.json","","",true},
+	{HTTP_GET, "https://api.coindesk.com/v1/bpi/currentprice.json","","coinbase.der",true},
+	{HTTP_GET, "https://api.coindesk.com/v1/bpi/currentprice.json","","ms.der",false},
+	
+	
+	{HTTP_GET, "https://httpbin.org/get","","",true,},									'Get request
+	{HTTP_GET, "https://httpbin.org/get","","httpbin.der",true,},						'Get request
+	{HTTP_GET, "https://httpbin.org/get","","ms.der",false,},							'Wrong Certificate. Test passes because it times out.
+	
+	{HTTP_POST, "https://httpbin.org/post","data","",true},								'Post request
+	{HTTP_POST, "https://httpbin.org/post","data","httpbin.der",true},					'Post request
+	{HTTP_POST, "https://httpbin.org/post","data","ms.der",false},						'Wrong Certificate. Test passes because it times out.
+	
+	
+
+	{HTTP_GET, "http://httpbin.org:100/get","","",false},								'Wrong Port should timeout
+	{HTTP_GET, "https://104.40.239.93:100/", "", "sample.cer",false},					'Wrong IP Address and Port should timeout
+	
+	
+	{HTTP_GET, "https://httpbin.org:100/get","","",false},								'HTTPS and not port 443 should timeout
+	{HTTP_GET, "httpbin.org/get","","",false},											'Malformed URL should timeout
+	
+'	{HTTP_GET, "http://httpbin.org/get/","","",true},									'Trailing slash (Should complete but return 404)
+
+
+	{HTTP_GET, "https://shopee.tw/","","",true},										'Don't check certificate
+
 
 }
 
 sub on_sys_init()
-'	#if PLATFORM_ID<>WM2000
+	#if PLATFORM_ID<>WM2000
 		dhcp_start(HTTP_REQUEST_INTERFACE,"","")
-'	#endif
+	#else 
+		wln.autoconnect=YES
+		wln.autodhcp=YES
+		wln.autoconnectssid="MikroTik2"
+		wln.autoconnectpassword="16836836"	
+	#endif
 
-'	wln.autoconnect=YES
-'	wln.autodhcp=YES
-'	wln.autoconnectssid="Tibbo9F"
-'	wln.autoconnectpassword="16836836"
+
 	dns_start(sock_get("DNS"))	
    'HTTP server setup
     '================================================================
@@ -162,10 +166,10 @@ sub callback_http_send_post_data(remaining_content_length as dword)
 	
 end sub
 
-sub test_passed()
+sub test_passed(error_message as string)
 	
-	sys.debugprint("Test Number " + str(test_no) + ": Passed\r\n")
-	tests(test_no).result = "Passed"
+	sys.debugprint("Test Number " + str(test_no) + ": Passed " + error_message +"\r\n")
+	tests(test_no).result = "Passed " + error_message
 	test_no=test_no+1
 	test_inprogress = false
 	
@@ -174,7 +178,7 @@ end sub
 sub test_failed(error_message as string)
 
 	sys.debugprint("Test Number " + str(test_no) + ": Failed\r\n")
-	tests(test_no).result = error_message 	
+	tests(test_no).result = "Failed " + error_message 	
 	test_no=test_no+1
 	test_inprogress = false
 
@@ -183,29 +187,18 @@ end sub
 sub callback_http_request_complete()
 	
 	if tests(test_no).expected_to_complete=true then
-		if test_no<=1 then
-			if tests(test_no).result="" then
-				test_passed()
-			else
-				test_failed("Failed - Passed when expected to fail")
-			end if
-		else
-			test_passed()
-		end if
+		test_passed("")
+		exit sub
 	end if
-
+	test_failed("Passed when expected to fail")
 end sub
 
 sub callback_http_request_failed(error_message as string)
-
-	if tests(test_no).result="" then
-		test_passed()
-	else
+	if tests(test_no).expected_to_complete=true then
 		test_failed(error_message)
+	else 
+		test_passed(error_message)
 	end if
-	test_no=test_no+1
-	test_inprogress = false
-
 end sub
 
 sub on_sys_timer()
@@ -353,7 +346,15 @@ sub on_dhcp_ok(renew as enum no_yes, interface as enum pl_sock_interfaces, ip as
 end sub
 
 sub callback_http_send_headers()
+end sub
 
-	http_send_headers("Content-Type", "text/plain")
+sub on_sys_dhcp_ok(renew as enum no_yes, interface as enum pl_sock_interfaces, ip as string(16), gateway_ip as string(16), netmask as string(16), lease_time as dword)
+	wln.ip = ip
+	wln.gatewayip = gateway_ip
+	wln.netmask = netmask
+	test_inprogress = false
+end sub
 
+sub on_sys_dhcp_failure(interface as enum pl_sock_interfaces)
+	sys.debugprint("Unable to get dhcp...\r\n")
 end sub
